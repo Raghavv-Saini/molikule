@@ -1,0 +1,47 @@
+# ── Environment files ────────────────────────────────────────────────────────
+# Never commit real credentials — covers .env, .env.local, .env.production, etc.
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# ── Go (backend) ─────────────────────────────────────────────────────────────
+# Compiled binaries
+backend/server
+backend/server.exe
+backend/*.out
+
+# Go test cache and coverage
+*.test
+*.out
+coverage.html
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# ── Python (datamigration) ────────────────────────────────────────────────────
+datamigration/__pycache__/
+datamigration/**/__pycache__/
+datamigration/*.pyc
+datamigration/**/*.pyc
+datamigration/.venv/
+datamigration/venv/
+datamigration/*.egg-info/
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.iml
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+.kiro
