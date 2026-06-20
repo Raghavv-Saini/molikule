@@ -1,24 +1,25 @@
 package db
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib" // registers "pgx" driver for database/sql
 )
 
 // New opens a PostgreSQL connection pool using the provided DSN.
-// It pings the database to verify connectivity before returning.
-func New(dsn string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(context.Background(), dsn)
+// It uses pgx's database/sql-compatible stdlib adapter so the returned
+// *sql.DB satisfies the SQLC-generated DBTX interface.
+func New(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create connection pool: %w", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := pool.Ping(context.Background()); err != nil {
-		pool.Close()
+	if err := db.Ping(); err != nil {
+		db.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	return pool, nil
+	return db, nil
 }
