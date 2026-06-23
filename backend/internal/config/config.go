@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/joho/godotenv"
 )
@@ -19,8 +20,7 @@ type Config struct {
 // if no .env file is present it falls back to the process environment silently.
 // It returns a descriptive error if any required variable is missing.
 func New() (*Config, error) {
-	// Load .env if present; ignore the error so production (no .env file) works fine.
-	_ = godotenv.Load()
+	loadEnvFile()
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
@@ -42,4 +42,20 @@ func New() (*Config, error) {
 		JWTSecret:   jwtSecret,
 		Port:        port,
 	}, nil
+}
+
+func loadEnvFile() {
+	candidates := []string{
+		".env",
+		filepath.Join("..", ".env"),
+		filepath.Join("..", "..", ".env"),
+		filepath.Join("backend", ".env"),
+	}
+
+	for _, path := range candidates {
+		if _, err := os.Stat(path); err == nil {
+			_ = godotenv.Load(path)
+			return
+		}
+	}
 }

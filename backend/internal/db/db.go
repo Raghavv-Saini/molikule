@@ -23,3 +23,24 @@ func New(dsn string) (*sql.DB, error) {
 
 	return db, nil
 }
+
+// EnsureUsersTable creates the application-managed users table if it is absent.
+// It intentionally does not touch purchase_records, which is populated externally.
+func EnsureUsersTable(db *sql.DB) error {
+	const query = `
+CREATE TABLE IF NOT EXISTS users (
+    id            BIGSERIAL    PRIMARY KEY,
+    employee_id   VARCHAR(6)   UNIQUE NOT NULL,
+    name          VARCHAR(255),
+    password_hash TEXT         NOT NULL,
+    role          VARCHAR(20)  NOT NULL,
+    created_at    TIMESTAMP    DEFAULT NOW(),
+    updated_at    TIMESTAMP    DEFAULT NOW()
+);`
+
+	if _, err := db.Exec(query); err != nil {
+		return fmt.Errorf("failed to ensure users table exists: %w", err)
+	}
+
+	return nil
+}
