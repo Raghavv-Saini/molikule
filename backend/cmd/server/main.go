@@ -37,6 +37,12 @@ func main() {
 	}
 	defer pool.Close()
 
+	// ── Ensure application-managed tables exist ───────────────────────────────
+	if err := internaldb.EnsureUsersTable(pool); err != nil {
+		logger.Error("failed to ensure users table exists", "error", err)
+		os.Exit(1)
+	}
+
 	// ── Instantiate SQLC queries object ───────────────────────────────────────
 	queries := sqlcdb.New(pool)
 
