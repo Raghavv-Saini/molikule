@@ -4,26 +4,82 @@ interface SummaryCardProps {
   summary: SearchSummary | null;
 }
 
-// Format a numeric value as a locale string with 2 decimal places.
-// Returns '—' for null/undefined.
-function formatCost(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+interface NullableStringShape {
+  String?: string;
+  Valid?: boolean;
 }
 
-function formatNumber(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return value.toLocaleString();
+interface NullableTimeShape {
+  Time?: string;
+  Valid?: boolean;
 }
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '—';
+function unwrapNullable(value: unknown): unknown {
+  if (value == null) return null;
+  if (typeof value !== 'object') return value;
+
+  const maybeString = value as NullableStringShape;
+  if ('Valid' in maybeString && maybeString.Valid === false) return null;
+  if ('String' in maybeString) return maybeString.String;
+
+  const maybeTime = value as NullableTimeShape;
+  if ('Time' in maybeTime) return maybeTime.Time;
+
   return value;
 }
 
-function formatList(values: string[] | null | undefined): string {
-  if (!values || values.length === 0) return '—';
-  return values.join(', ');
+function formatText(value: unknown): string {
+  const unwrapped = unwrapNullable(value);
+  if (unwrapped == null || unwrapped === '') return '—';
+  if (typeof unwrapped === 'string') return unwrapped;
+  if (typeof unwrapped === 'number' || typeof unwrapped === 'boolean') return String(unwrapped);
+  return '—';
+}
+
+// Format a numeric value as a locale string with 2 decimal places.
+// Returns '—' for null/undefined.
+function formatCost(value: unknown): string {
+  const unwrapped = unwrapNullable(value);
+  if (unwrapped == null || unwrapped === '') return '—';
+  const numericValue = typeof unwrapped === 'number' ? unwrapped : Number(unwrapped);
+  if (!Number.isFinite(numericValue)) return formatText(unwrapped);
+  return numericValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatNumber(value: unknown): string {
+  const unwrapped = unwrapNullable(value);
+  if (unwrapped == null || unwrapped === '') return '—';
+  const numericValue = typeof unwrapped === 'number' ? unwrapped : Number(unwrapped);
+  if (!Number.isFinite(numericValue)) return formatText(unwrapped);
+  return numericValue.toLocaleString();
+}
+
+function formatDate(value: unknown): string {
+  const unwrapped = unwrapNullable(value);
+  if (unwrapped == null || unwrapped === '') return '—';
+  if (typeof unwrapped !== 'string') return '—';
+  const dateOnly = unwrapped.includes('T') ? unwrapped.slice(0, 10) : unwrapped;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateOnly);
+  if (!m) return unwrapped;
+  return `${m[3]} ${m[2]} ${m[1]}`;
+}
+
+function formatList(values: unknown): string {
+  const unwrapped = unwrapNullable(values);
+  if (!unwrapped) return '—';
+  if (Array.isArray(unwrapped)) {
+    const formatted = unwrapped.map(formatText).filter((value) => value !== '—');
+    return formatted.length > 0 ? formatted.join(', ') : '—';
+  }
+  if (typeof unwrapped === 'string') {
+    const trimmed = unwrapped.trim();
+    if (!trimmed) return '—';
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      return trimmed.slice(1, -1).split(',').filter(Boolean).join(', ') || '—';
+    }
+    return trimmed;
+  }
+  return '—';
 }
 
 // A single labelled metric row
@@ -87,8 +143,8 @@ function MaterialSection({ ms }: { ms: MaterialSummary }) {
   return (
     <>
       <SectionHeading title={`Material Summary — ${ms.material_code}`} />
-      {ms.description && (
-        <MetricRow label="Description" value={ms.description} />
+      {formatText(ms.description) !== '—' && (
+        <MetricRow label="Description" value={formatText(ms.description)} />
       )}
       <MetricRow label="Avg Purchase Cost" value={formatCost(ms.avg_cost)} />
       <MetricRow label="Avg Net Price" value={formatCost(ms.avg_net_price)} />

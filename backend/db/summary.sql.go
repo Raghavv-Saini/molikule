@@ -648,7 +648,7 @@ const summaryMaterial = `-- name: SummaryMaterial :one
 
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -741,7 +741,7 @@ const summaryMaterialPlant = `-- name: SummaryMaterialPlant :one
 
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -810,7 +810,7 @@ const summaryMaterialVendor = `-- name: SummaryMaterialVendor :one
 
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -879,7 +879,7 @@ const summaryMaterialVendorPlant = `-- name: SummaryMaterialVendorPlant :one
 
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -951,7 +951,7 @@ const summaryPlant = `-- name: SummaryPlant :one
 
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -1013,7 +1013,7 @@ const summaryVendor = `-- name: SummaryVendor :one
 
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -1075,7 +1075,7 @@ const summaryVendorPlant = `-- name: SummaryVendorPlant :one
 
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,

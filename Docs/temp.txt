@@ -1,0 +1,13 @@
+INSERT INTO users (
+    employee_id,
+    name,
+    password_hash,
+    role
+) VALUES (
+    '000001',
+    'molikule_admin',
+    '$2a$12$tQDIpf/hvATh34L.3BTYcOPk5ur0ALQCV/9gtZTZrww9tAgBq2EPC',
+    'admin'
+);
+
+molikule123

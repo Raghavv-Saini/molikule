@@ -36,7 +36,7 @@
 -- name: SummaryMaterial :one
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -58,7 +58,7 @@ WHERE material_code = $1
 -- name: SummaryVendor :one
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -80,7 +80,7 @@ WHERE vendor_code = $1
 -- name: SummaryPlant :one
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -102,7 +102,7 @@ WHERE plant_code = $1
 -- name: SummaryMaterialVendor :one
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -125,7 +125,7 @@ WHERE material_code = $1
 -- name: SummaryMaterialPlant :one
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -148,7 +148,7 @@ WHERE material_code = $1
 -- name: SummaryVendorPlant :one
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,
@@ -171,7 +171,7 @@ WHERE vendor_code = $1
 -- name: SummaryMaterialVendorPlant :one
 SELECT
     COUNT(*)                        AS records_found,
-    SUM(cost)                       AS total_cost,
+    ROUND(SUM(cost))::BIGINT        AS total_cost,
     AVG(cost)                       AS avg_cost,
     AVG(net_price)                  AS avg_net_price,
     MIN(cost)                       AS min_cost,

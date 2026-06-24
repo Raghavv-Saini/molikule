@@ -20,18 +20,57 @@ interface ResultsTableProps {
 
 const columnHelper = createColumnHelper<PurchaseRecord>();
 
+interface NullableStringShape {
+  String?: string;
+  Valid?: boolean;
+}
+
+function unwrapNullable(value: unknown): unknown {
+  if (value == null) return null;
+  if (typeof value !== 'object') return value;
+
+  const maybeString = value as NullableStringShape;
+  if ('Valid' in maybeString && maybeString.Valid === false) return null;
+  if ('String' in maybeString) return maybeString.String;
+
+  return value;
+}
+
+function formatText(value: unknown): string {
+  const unwrapped = unwrapNullable(value);
+  if (unwrapped == null || unwrapped === '') return '—';
+  if (typeof unwrapped === 'string') return unwrapped;
+  if (typeof unwrapped === 'number' || typeof unwrapped === 'boolean') return String(unwrapped);
+  return '—';
+}
+
+function formatDate(value: unknown): string {
+  const text = formatText(value);
+  if (text === '—') return text;
+  const dateOnly = text.includes('T') ? text.slice(0, 10) : text;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateOnly);
+  if (!m) return text;
+  return `${m[3]} ${m[2]} ${m[1]}`;
+}
+
 // Format a numeric value with 2 decimal places, returning '—' for null/undefined.
-function formatNumber(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return value.toLocaleString(undefined, {
+function formatNumber(value: unknown): string {
+  const unwrapped = unwrapNullable(value);
+  if (unwrapped == null || unwrapped === '') return '—';
+  const numericValue = typeof unwrapped === 'number' ? unwrapped : Number(unwrapped);
+  if (!Number.isFinite(numericValue)) return formatText(unwrapped);
+  return numericValue.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
 
-function formatQuantity(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return value.toLocaleString();
+function formatQuantity(value: unknown): string {
+  const unwrapped = unwrapNullable(value);
+  if (unwrapped == null || unwrapped === '') return '—';
+  const numericValue = typeof unwrapped === 'number' ? unwrapped : Number(unwrapped);
+  if (!Number.isFinite(numericValue)) return formatText(unwrapped);
+  return numericValue.toLocaleString();
 }
 
 const SORT_COLUMNS: SortColumn[] = ['purchase_date', 'cost', 'net_price'];
@@ -53,27 +92,27 @@ export function ResultsTable({
   const columns = [
     columnHelper.accessor('plant_code', {
       header: 'Plant Code',
-      cell: (info) => info.getValue() || '—',
+      cell: (info) => formatText(info.getValue()),
     }),
     columnHelper.accessor('material_code', {
       header: 'Material Code',
-      cell: (info) => info.getValue() || '—',
+      cell: (info) => formatText(info.getValue()),
     }),
     columnHelper.accessor('description', {
       header: 'Description',
-      cell: (info) => info.getValue() ?? '—',
+      cell: (info) => formatText(info.getValue()),
     }),
     columnHelper.accessor('vendor_code', {
       header: 'Vendor Code',
-      cell: (info) => info.getValue() || '—',
+      cell: (info) => formatText(info.getValue()),
     }),
     columnHelper.accessor('purchase_no', {
       header: 'Purchase Number',
-      cell: (info) => info.getValue() ?? '—',
+      cell: (info) => formatText(info.getValue()),
     }),
     columnHelper.accessor('purchase_date', {
       header: 'Purchase Date',
-      cell: (info) => info.getValue() || '—',
+      cell: (info) => formatDate(info.getValue()),
     }),
     columnHelper.accessor('quantity', {
       header: 'Quantity',
@@ -81,7 +120,7 @@ export function ResultsTable({
     }),
     columnHelper.accessor('unit', {
       header: 'Unit',
-      cell: (info) => info.getValue() ?? '—',
+      cell: (info) => formatText(info.getValue()),
     }),
     columnHelper.accessor('net_price', {
       header: 'Net Price',
@@ -93,11 +132,11 @@ export function ResultsTable({
     }),
     columnHelper.accessor('currency', {
       header: 'Currency',
-      cell: (info) => info.getValue() ?? '—',
+      cell: (info) => formatText(info.getValue()),
     }),
     columnHelper.accessor('supplying_plant', {
       header: 'Supplying Plant',
-      cell: (info) => info.getValue() ?? '—',
+      cell: (info) => formatText(info.getValue()),
     }),
   ];
 

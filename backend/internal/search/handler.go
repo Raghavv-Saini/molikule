@@ -99,9 +99,12 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 		hasVen := req.VendorCode != nil && *req.VendorCode != ""
 		hasPla := req.PlantCode != nil && *req.PlantCode != ""
 
-		if !hasMat && !hasVen && !hasPla {
+		hasStartDate := req.StartDate != nil && *req.StartDate != ""
+		hasEndDate := req.EndDate != nil && *req.EndDate != ""
+
+		if !hasMat && !hasVen && !hasPla && !hasStartDate && !hasEndDate {
 			return models.SendError(c, fiber.StatusBadRequest, "VALIDATION_ERROR",
-				"at least one of material_code, vendor_code, or plant_code is required")
+				"at least one of material_code, vendor_code, plant_code, start_date, or end_date is required")
 		}
 
 		// ── 3. Validate code formats ─────────────────────────────────────────
@@ -160,6 +163,10 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 			return models.SendError(c, fiber.StatusBadRequest, "VALIDATION_ERROR",
 				"end_date must be in YYYY-MM-DD format")
 		}
+		if startDate.Valid && endDate.Valid && endDate.Time.Before(startDate.Time) {
+			return models.SendError(c, fiber.StatusBadRequest, "VALIDATION_ERROR",
+				"end_date must be on or after start_date")
+		}
 
 		ctx := c.Context()
 		limit := int32(req.PageSize)
@@ -169,6 +176,11 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 		var totalRecords int64
 
 		switch {
+		case !hasMat && !hasVen && !hasPla:
+			totalRecords, err = queries.CountByDateRange(ctx, db.CountByDateRangeParams{
+				StartDate: startDate,
+				EndDate:   endDate,
+			})
 		case hasMat && !hasVen && !hasPla:
 			totalRecords, err = queries.CountByMaterial(ctx, db.CountByMaterialParams{
 				MaterialCode: *req.MaterialCode,
@@ -239,6 +251,13 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 		var records []db.PurchaseRecord
 
 		switch {
+		case !hasMat && !hasVen && !hasPla:
+			records, err = queries.SearchByDateRange(ctx, db.SearchByDateRangeParams{
+				StartDate: startDate,
+				EndDate:   endDate,
+				Limit:     limit,
+				Offset:    offset,
+			}, req.SortBy, req.SortOrder)
 		case hasMat && !hasVen && !hasPla:
 			records, err = searchMaterial(ctx, queries, *req.MaterialCode, req.SortBy, req.SortOrder, limit, offset, startDate, endDate)
 		case !hasMat && hasVen && !hasPla:
@@ -265,6 +284,27 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 		var sumRow summaryResponse
 
 		switch {
+		case !hasMat && !hasVen && !hasPla:
+			row, e := queries.SummaryDateRange(ctx, db.SummaryDateRangeParams{
+				StartDate: startDate,
+				EndDate:   endDate,
+			})
+			if e != nil {
+				return models.SendError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", "summary query failed")
+			}
+			sumRow = summaryResponse{
+				RecordsFound:       row.RecordsFound,
+				TotalCost:          row.TotalCost,
+				AvgCost:            row.AvgCost,
+				AvgNetPrice:        row.AvgNetPrice,
+				MinCost:            row.MinCost,
+				MaxCost:            row.MaxCost,
+				PurchaseOrderCount: row.PurchaseOrderCount,
+				EarliestDate:       row.EarliestDate,
+				LatestDate:         row.LatestDate,
+				Currencies:         row.Currencies,
+				Units:              row.Units,
+			}
 		case hasMat && !hasVen && !hasPla:
 			row, e := queries.SummaryMaterial(ctx, db.SummaryMaterialParams{
 				MaterialCode: *req.MaterialCode,

@@ -1,12 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
-import { Login } from './pages/Login'
-import { Dashboard } from './pages/Dashboard'
-import { UserManagement } from './pages/UserManagement'
-import { useAuth } from './hooks/useAuth'
+import { AuthProvider } from './context/AuthContext'
+import { AppRoutes } from './AppRoutes'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,39 +22,13 @@ const queryClient = new QueryClient({
   },
 })
 
-/**
- * Redirects an already-authenticated user away from /login to the dashboard.
- * Must be rendered inside BrowserRouter so it can call useAuth and use Navigate.
- */
-function LoginRoute() {
-  const { isAuthenticated } = useAuth()
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />
-  }
-  return <Login />
-}
-
-function AppRoutes() {
-  return (
-    <Routes>
-      {/* Public route — redirect to dashboard if already logged in */}
-      <Route path="/login" element={<LoginRoute />} />
-
-      {/* Protected routes — ProtectedRoute inside each page handles auth redirects */}
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/users" element={<UserManagement />} />
-
-      {/* Fallback: unknown paths redirect to root */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  )
-}
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AppRoutes />
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

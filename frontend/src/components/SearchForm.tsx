@@ -1,10 +1,54 @@
-import { useState, type FormEvent, type FocusEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { SearchRequest } from '../types';
 
 // Validation regexes per requirements 4.3, 4.4, 4.5
 const MATERIAL_CODE_PATTERN = /^\d{8}$/;
 const VENDOR_CODE_PATTERN = /^\d{8}$/;
 const PLANT_CODE_PATTERN = /^[a-zA-Z0-9]{4}$/;
+
+// Date input is entered as DD MM YYYY and submitted to the API as YYYY-MM-DD.
+const DATE_INPUT_PATTERN = /^(\d{2}) (\d{2}) (\d{4})$/;
+
+function formatDateEntry(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
+  return parts.join(' ');
+}
+
+/**
+ * Convert a DD MM YYYY date input value to YYYY-MM-DD.
+ * Returns null if the input is empty or invalid.
+ */
+function parseDateInput(value: string): string | null {
+  if (!value) return null;
+  const m = DATE_INPUT_PATTERN.exec(value);
+  if (!m) return null;
+  const [, dd, mm, yyyy] = m;
+  const year = parseInt(yyyy, 10);
+  const month = parseInt(mm, 10);
+  const day = parseInt(dd, 10);
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  if (year < 1900 || year > 2100) return null;
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function validateDateField(value: string): string {
+  if (!value) return '';
+  if (!DATE_INPUT_PATTERN.test(value)) return 'Date must be in DD MM YYYY format.';
+  if (parseDateInput(value) === null) return 'Invalid date.';
+  return '';
+}
 
 interface SearchFormProps {
   onSearch: (request: SearchRequest) => void;
@@ -41,8 +85,12 @@ function validatePlantCode(value: string): string {
 }
 
 function validateDateRange(startDate: string, endDate: string): string {
-  if (startDate && endDate && endDate < startDate) {
-    return 'End Date must be on or after Start Date.';
+  if (startDate && endDate) {
+    const startIso = parseDateInput(startDate);
+    const endIso = parseDateInput(endDate);
+    if (startIso && endIso && endIso < startIso) {
+      return 'End Date must be on or after Start Date.';
+    }
   }
   return '';
 }
@@ -64,14 +112,16 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
   const [formError, setFormError] = useState('');
 
   function handleBlur(field: keyof FieldErrors) {
-    return (_e: FocusEvent<HTMLInputElement>) => {
+    return () => {
       setErrors((prev) => {
         const updated = { ...prev };
         if (field === 'material_code') updated.material_code = validateMaterialCode(materialCode);
         if (field === 'vendor_code') updated.vendor_code = validateVendorCode(vendorCode);
         if (field === 'plant_code') updated.plant_code = validatePlantCode(plantCode);
-        if (field === 'end_date') updated.end_date = validateDateRange(startDate, endDate);
-        if (field === 'start_date') updated.start_date = '';
+        if (field === 'start_date') updated.start_date = validateDateField(startDate);
+        if (field === 'end_date') {
+          updated.end_date = validateDateField(endDate) || validateDateRange(startDate, endDate);
+        }
         return updated;
       });
     };
@@ -85,23 +135,24 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
     const materialErr = validateMaterialCode(materialCode);
     const vendorErr = validateVendorCode(vendorCode);
     const plantErr = validatePlantCode(plantCode);
-    const dateErr = validateDateRange(startDate, endDate);
+    const startDateErr = validateDateField(startDate);
+    const endDateErr = validateDateField(endDate);
+    const dateErr = !startDateErr && !endDateErr ? validateDateRange(startDate, endDate) : '';
 
     setErrors({
       material_code: materialErr,
       vendor_code: vendorErr,
       plant_code: plantErr,
-      start_date: '',
-      end_date: dateErr,
+      start_date: startDateErr,
+      end_date: endDateErr || dateErr,
     });
 
-    if (materialErr || vendorErr || plantErr || dateErr) {
+    if (materialErr || vendorErr || plantErr || startDateErr || endDateErr || dateErr) {
       return;
     }
 
-    // Requirement 4.2: at least one of material/vendor/plant must be provided
-    if (!materialCode && !vendorCode && !plantCode) {
-      setFormError('At least one of Material Code, Vendor Code, or Plant Code is required.');
+    if (!materialCode && !vendorCode && !plantCode && !startDate && !endDate) {
+      setFormError('Enter at least one code or a start/end date.');
       return;
     }
 
@@ -113,8 +164,10 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
     if (materialCode) request.material_code = materialCode;
     if (vendorCode) request.vendor_code = vendorCode;
     if (plantCode) request.plant_code = plantCode;
-    if (startDate) request.start_date = startDate;
-    if (endDate) request.end_date = endDate;
+    const startIso = parseDateInput(startDate);
+    const endIso = parseDateInput(endDate);
+    if (startIso) request.start_date = startIso;
+    if (endIso) request.end_date = endIso;
 
     onSearch(request);
   }
@@ -221,18 +274,32 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
           </label>
           <input
             id="start-date"
-            type="date"
+            type="text"
+            inputMode="numeric"
+            placeholder="DD MM YYYY"
+            maxLength={10}
             value={startDate}
             onChange={(e) => {
-              setStartDate(e.target.value);
+              const nextValue = formatDateEntry(e.target.value);
+              setStartDate(nextValue);
               if (errors.end_date) {
-                setErrors((prev) => ({ ...prev, end_date: validateDateRange(e.target.value, endDate) }));
+                setErrors((prev) => ({ ...prev, end_date: validateDateRange(nextValue, endDate) }));
+              }
+              if (errors.start_date) {
+                setErrors((prev) => ({ ...prev, start_date: validateDateField(nextValue) }));
               }
             }}
             onBlur={handleBlur('start_date')}
-            style={styles.input}
+            aria-describedby={errors.start_date ? 'start-date-error' : undefined}
+            aria-invalid={errors.start_date ? true : undefined}
+            style={{ ...styles.input, ...(errors.start_date ? styles.inputError : {}) }}
             disabled={isLoading}
           />
+          {errors.start_date && (
+            <span id="start-date-error" role="alert" style={styles.errorText}>
+              {errors.start_date}
+            </span>
+          )}
         </div>
 
         {/* End Date */}
@@ -242,11 +309,18 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
           </label>
           <input
             id="end-date"
-            type="date"
+            type="text"
+            inputMode="numeric"
+            placeholder="DD MM YYYY"
+            maxLength={10}
             value={endDate}
             onChange={(e) => {
-              setEndDate(e.target.value);
-              setErrors((prev) => ({ ...prev, end_date: validateDateRange(startDate, e.target.value) }));
+              const nextValue = formatDateEntry(e.target.value);
+              setEndDate(nextValue);
+              setErrors((prev) => ({
+                ...prev,
+                end_date: validateDateField(nextValue) || validateDateRange(startDate, nextValue),
+              }));
             }}
             onBlur={handleBlur('end_date')}
             aria-describedby={errors.end_date ? 'end-date-error' : undefined}
