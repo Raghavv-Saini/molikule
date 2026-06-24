@@ -21,6 +21,9 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/coverage/
+frontend/*.local
+frontend/tsconfig.tsbuildinfo
+frontend/.eslintcache
 
 # ── Python (datamigration) ────────────────────────────────────────────────────
 datamigration/__pycache__/
