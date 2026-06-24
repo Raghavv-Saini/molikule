@@ -3,6 +3,7 @@ export interface User {
   employee_id: string;
   name: string;
   role: "user" | "admin";
+  created_at?: string | null;
 }
 
 export interface AuthState {
