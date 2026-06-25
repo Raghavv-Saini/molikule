@@ -698,6 +698,7 @@ const styles: Record<string, React.CSSProperties> = {
   code: {
     fontFamily: 'ui-monospace, Consolas, monospace',
     fontSize: '12px',
+    color: '#08060d',
     backgroundColor: '#f4f3f5',
     padding: '2px 6px',
     borderRadius: '3px',

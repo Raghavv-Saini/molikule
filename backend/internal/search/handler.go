@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"database/sql"
+	"reflect"
 	"regexp"
 	"time"
 
@@ -57,6 +58,52 @@ type summaryResponse struct {
 	PlantSummary       interface{} `json:"plant_summary"`
 }
 
+type materialSummaryResponse struct {
+	MaterialCode       string      `json:"material_code"`
+	Description        interface{} `json:"description"`
+	AvgCost            float64     `json:"avg_cost"`
+	AvgNetPrice        float64     `json:"avg_net_price"`
+	LastPurchaseCost   interface{} `json:"last_purchase_cost"`
+	CheapestCost       interface{} `json:"cheapest_cost"`
+	VendorCount        int64       `json:"vendor_count"`
+	PlantCount         int64       `json:"plant_count"`
+	PurchaseOrderCount int64       `json:"purchase_order_count"`
+	Currencies         interface{} `json:"currencies"`
+	Units              interface{} `json:"units"`
+	FirstDate          interface{} `json:"first_date"`
+	LastDate           interface{} `json:"last_date"`
+}
+
+type vendorSummaryResponse struct {
+	VendorCode         string      `json:"vendor_code"`
+	AvgCost            float64     `json:"avg_cost"`
+	AvgNetPrice        float64     `json:"avg_net_price"`
+	LastPurchaseCost   interface{} `json:"last_purchase_cost"`
+	CheapestCost       interface{} `json:"cheapest_cost"`
+	MaterialsCount     int64       `json:"materials_count"`
+	PlantsCount        int64       `json:"plants_count"`
+	PurchaseOrderCount int64       `json:"purchase_order_count"`
+	Currencies         interface{} `json:"currencies"`
+	Units              interface{} `json:"units"`
+	FirstDate          interface{} `json:"first_date"`
+	LastDate           interface{} `json:"last_date"`
+}
+
+type plantSummaryResponse struct {
+	PlantCode          string      `json:"plant_code"`
+	AvgCost            float64     `json:"avg_cost"`
+	AvgNetPrice        float64     `json:"avg_net_price"`
+	LastPurchaseCost   interface{} `json:"last_purchase_cost"`
+	CheapestCost       interface{} `json:"cheapest_cost"`
+	VendorCount        int64       `json:"vendor_count"`
+	MaterialCount      int64       `json:"material_count"`
+	PurchaseOrderCount int64       `json:"purchase_order_count"`
+	Currencies         interface{} `json:"currencies"`
+	Units              interface{} `json:"units"`
+	FirstDate          interface{} `json:"first_date"`
+	LastDate           interface{} `json:"last_date"`
+}
+
 // searchResponse is the full JSON body returned by the search endpoint.
 type searchResponse struct {
 	Summary    *summaryResponse    `json:"summary"`
@@ -82,6 +129,106 @@ func ceilDiv(a, b int64) int64 {
 		return 0
 	}
 	return (a + b - 1) / b
+}
+
+func fieldValue(row interface{}, name string) interface{} {
+	v := reflect.ValueOf(row)
+	if !v.IsValid() {
+		return nil
+	}
+	if v.Kind() == reflect.Pointer {
+		if v.IsNil() {
+			return nil
+		}
+		v = v.Elem()
+	}
+	f := v.FieldByName(name)
+	if !f.IsValid() {
+		return nil
+	}
+	return f.Interface()
+}
+
+func stringField(row interface{}, name string) string {
+	if value, ok := fieldValue(row, name).(string); ok {
+		return value
+	}
+	return ""
+}
+
+func int64Field(row interface{}, name string) int64 {
+	if value, ok := fieldValue(row, name).(int64); ok {
+		return value
+	}
+	return 0
+}
+
+func float64Field(row interface{}, name string) float64 {
+	if value, ok := fieldValue(row, name).(float64); ok {
+		return value
+	}
+	return 0
+}
+
+func materialSummary(row interface{}) *materialSummaryResponse {
+	if row == nil {
+		return nil
+	}
+	return &materialSummaryResponse{
+		MaterialCode:       stringField(row, "MaterialCode"),
+		Description:        fieldValue(row, "Description"),
+		AvgCost:            float64Field(row, "AvgCost"),
+		AvgNetPrice:        float64Field(row, "AvgNetPrice"),
+		LastPurchaseCost:   fieldValue(row, "LastPurchaseCost"),
+		CheapestCost:       fieldValue(row, "MinCost"),
+		VendorCount:        int64Field(row, "DistinctVendorCount"),
+		PlantCount:         int64Field(row, "DistinctPlantCount"),
+		PurchaseOrderCount: int64Field(row, "PurchaseOrderCount"),
+		Currencies:         fieldValue(row, "Currencies"),
+		Units:              fieldValue(row, "Units"),
+		FirstDate:          fieldValue(row, "EarliestDate"),
+		LastDate:           fieldValue(row, "LatestDate"),
+	}
+}
+
+func vendorSummary(row interface{}) *vendorSummaryResponse {
+	if row == nil {
+		return nil
+	}
+	return &vendorSummaryResponse{
+		VendorCode:         stringField(row, "VendorCode"),
+		AvgCost:            float64Field(row, "AvgCost"),
+		AvgNetPrice:        float64Field(row, "AvgNetPrice"),
+		LastPurchaseCost:   fieldValue(row, "LastPurchaseCost"),
+		CheapestCost:       fieldValue(row, "MinCost"),
+		MaterialsCount:     int64Field(row, "DistinctMaterialCount"),
+		PlantsCount:        int64Field(row, "DistinctPlantCount"),
+		PurchaseOrderCount: int64Field(row, "PurchaseOrderCount"),
+		Currencies:         fieldValue(row, "Currencies"),
+		Units:              fieldValue(row, "Units"),
+		FirstDate:          fieldValue(row, "EarliestDate"),
+		LastDate:           fieldValue(row, "LatestDate"),
+	}
+}
+
+func plantSummary(row interface{}) *plantSummaryResponse {
+	if row == nil {
+		return nil
+	}
+	return &plantSummaryResponse{
+		PlantCode:          stringField(row, "PlantCode"),
+		AvgCost:            float64Field(row, "AvgCost"),
+		AvgNetPrice:        float64Field(row, "AvgNetPrice"),
+		LastPurchaseCost:   fieldValue(row, "LastPurchaseCost"),
+		CheapestCost:       fieldValue(row, "MinCost"),
+		VendorCount:        int64Field(row, "DistinctVendorCount"),
+		MaterialCount:      int64Field(row, "DistinctMaterialCount"),
+		PurchaseOrderCount: int64Field(row, "PurchaseOrderCount"),
+		Currencies:         fieldValue(row, "Currencies"),
+		Units:              fieldValue(row, "Units"),
+		FirstDate:          fieldValue(row, "EarliestDate"),
+		LastDate:           fieldValue(row, "LatestDate"),
+	}
 }
 
 // SearchHandler validates the request, dispatches the right SQLC queries, and
@@ -513,7 +660,7 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 					msRow = r
 				}
 			}
-			sumRow.MaterialSummary = msRow
+			sumRow.MaterialSummary = materialSummary(msRow)
 		}
 
 		// Vendor sub-summary: call when vendor_code is present
@@ -561,7 +708,7 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 					vsRow = r
 				}
 			}
-			sumRow.VendorSummary = vsRow
+			sumRow.VendorSummary = vendorSummary(vsRow)
 		}
 
 		// Plant sub-summary: call when plant_code is present
@@ -609,7 +756,7 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 					psRow = r
 				}
 			}
-			sumRow.PlantSummary = psRow
+			sumRow.PlantSummary = plantSummary(psRow)
 		}
 
 		// ── 12. Assemble and return response ──────────────────────────────────
