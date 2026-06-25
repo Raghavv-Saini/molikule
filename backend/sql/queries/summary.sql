@@ -551,3 +551,36 @@ WHERE pr.material_code = $1
   AND (sqlc.narg('start_date')::date IS NULL OR pr.purchase_date >= sqlc.narg('start_date')::date)
   AND (sqlc.narg('end_date')::date   IS NULL OR pr.purchase_date <= sqlc.narg('end_date')::date)
 GROUP BY pr.plant_code;
+
+-- ============================================================
+-- SECTION E: MATERIAL VENDOR COMPARISON
+-- Returns per-vendor metrics for material-code searches.
+-- ============================================================
+
+-- name: VendorComparisonByMaterial :many
+SELECT
+    pr.vendor_code,
+    MIN(NULLIF(pr.supplying_plant, ''))                                    AS supplier_name,
+    AVG(pr.cost)                                                           AS avg_cost,
+    AVG(pr.net_price)                                                      AS avg_net_price,
+    MIN(pr.cost)                                                           AS min_cost,
+    (SELECT sub.cost FROM purchase_records sub
+     WHERE sub.material_code = $1
+       AND sub.vendor_code   = pr.vendor_code
+       AND (sqlc.narg('vendor_code')::text IS NULL OR sub.vendor_code = sqlc.narg('vendor_code')::text)
+       AND (sqlc.narg('plant_code')::text  IS NULL OR sub.plant_code  = sqlc.narg('plant_code')::text)
+       AND (sqlc.narg('start_date')::date IS NULL OR sub.purchase_date >= sqlc.narg('start_date')::date)
+       AND (sqlc.narg('end_date')::date   IS NULL OR sub.purchase_date <= sqlc.narg('end_date')::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
+    COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
+    COUNT(*)                                                              AS record_count,
+    array_agg(DISTINCT pr.currency)                                        AS currencies,
+    array_agg(DISTINCT pr.unit)                                            AS units
+FROM purchase_records pr
+WHERE pr.material_code = $1
+  AND (sqlc.narg('vendor_code')::text IS NULL OR pr.vendor_code = sqlc.narg('vendor_code')::text)
+  AND (sqlc.narg('plant_code')::text  IS NULL OR pr.plant_code  = sqlc.narg('plant_code')::text)
+  AND (sqlc.narg('start_date')::date IS NULL OR pr.purchase_date >= sqlc.narg('start_date')::date)
+  AND (sqlc.narg('end_date')::date   IS NULL OR pr.purchase_date <= sqlc.narg('end_date')::date)
+GROUP BY pr.vendor_code
+ORDER BY AVG(pr.cost) ASC NULLS LAST, AVG(pr.net_price) ASC NULLS LAST, pr.vendor_code ASC;

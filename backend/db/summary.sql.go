@@ -1140,6 +1140,101 @@ func (q *Queries) SummaryVendorPlant(ctx context.Context, arg SummaryVendorPlant
 	return i, err
 }
 
+const vendorComparisonByMaterial = `-- name: VendorComparisonByMaterial :many
+
+SELECT
+    pr.vendor_code,
+    MIN(NULLIF(pr.supplying_plant, ''))                                    AS supplier_name,
+    AVG(pr.cost)                                                           AS avg_cost,
+    AVG(pr.net_price)                                                      AS avg_net_price,
+    MIN(pr.cost)                                                           AS min_cost,
+    (SELECT sub.cost FROM purchase_records sub
+     WHERE sub.material_code = $1
+       AND sub.vendor_code   = pr.vendor_code
+       AND ($2::text IS NULL OR sub.vendor_code = $2::text)
+       AND ($3::text  IS NULL OR sub.plant_code  = $3::text)
+       AND ($4::date IS NULL OR sub.purchase_date >= $4::date)
+       AND ($5::date   IS NULL OR sub.purchase_date <= $5::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
+    COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
+    COUNT(*)                                                              AS record_count,
+    array_agg(DISTINCT pr.currency)                                        AS currencies,
+    array_agg(DISTINCT pr.unit)                                            AS units
+FROM purchase_records pr
+WHERE pr.material_code = $1
+  AND ($2::text IS NULL OR pr.vendor_code = $2::text)
+  AND ($3::text  IS NULL OR pr.plant_code  = $3::text)
+  AND ($4::date IS NULL OR pr.purchase_date >= $4::date)
+  AND ($5::date   IS NULL OR pr.purchase_date <= $5::date)
+GROUP BY pr.vendor_code
+ORDER BY AVG(pr.cost) ASC NULLS LAST, AVG(pr.net_price) ASC NULLS LAST, pr.vendor_code ASC
+`
+
+type VendorComparisonByMaterialParams struct {
+	MaterialCode string         `json:"material_code"`
+	VendorCode   sql.NullString `json:"vendor_code"`
+	PlantCode    sql.NullString `json:"plant_code"`
+	StartDate    sql.NullTime   `json:"start_date"`
+	EndDate      sql.NullTime   `json:"end_date"`
+}
+
+type VendorComparisonByMaterialRow struct {
+	VendorCode         string         `json:"vendor_code"`
+	SupplierName       interface{}    `json:"supplier_name"`
+	AvgCost            float64        `json:"avg_cost"`
+	AvgNetPrice        float64        `json:"avg_net_price"`
+	MinCost            interface{}    `json:"min_cost"`
+	LastPurchaseCost   sql.NullString `json:"last_purchase_cost"`
+	PurchaseOrderCount int64          `json:"purchase_order_count"`
+	RecordCount        int64          `json:"record_count"`
+	Currencies         interface{}    `json:"currencies"`
+	Units              interface{}    `json:"units"`
+}
+
+// ============================================================
+// SECTION E: MATERIAL VENDOR COMPARISON
+// Returns per-vendor metrics for material-code searches.
+// ============================================================
+func (q *Queries) VendorComparisonByMaterial(ctx context.Context, arg VendorComparisonByMaterialParams) ([]VendorComparisonByMaterialRow, error) {
+	rows, err := q.db.QueryContext(ctx, vendorComparisonByMaterial,
+		arg.MaterialCode,
+		arg.VendorCode,
+		arg.PlantCode,
+		arg.StartDate,
+		arg.EndDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VendorComparisonByMaterialRow
+	for rows.Next() {
+		var i VendorComparisonByMaterialRow
+		if err := rows.Scan(
+			&i.VendorCode,
+			&i.SupplierName,
+			&i.AvgCost,
+			&i.AvgNetPrice,
+			&i.MinCost,
+			&i.LastPurchaseCost,
+			&i.PurchaseOrderCount,
+			&i.RecordCount,
+			&i.Currencies,
+			&i.Units,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const vendorSubSummaryMaterialVendor = `-- name: VendorSubSummaryMaterialVendor :one
 
 SELECT

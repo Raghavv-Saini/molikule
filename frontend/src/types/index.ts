@@ -85,6 +85,19 @@ export interface PlantSummary {
   last_date: string;
 }
 
+export interface VendorComparison {
+  vendor_code: string;
+  supplier_name: string | null;
+  avg_cost: number;
+  avg_net_price: number;
+  cheapest_cost: number | null;
+  last_purchase_cost: number | null;
+  purchase_order_count: number;
+  record_count: number;
+  currencies: string[];
+  units: string[];
+}
+
 export interface SearchSummary {
   records_found: number;
   total_cost: number;
@@ -111,6 +124,7 @@ export interface Pagination {
 
 export interface SearchResponse {
   summary: SearchSummary | null;
+  vendor_comparison?: VendorComparison[] | null;
   records: PurchaseRecord[];
   pagination: Pagination;
 }

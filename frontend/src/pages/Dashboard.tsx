@@ -5,6 +5,7 @@ import { ProtectedRoute } from '../components/ProtectedRoute';
 import { Navbar } from '../components/Navbar';
 import { SearchForm } from '../components/SearchForm';
 import { SummaryCard } from '../components/SummaryCard';
+import { VendorComparisonChart } from '../components/VendorComparisonChart';
 import { ResultsTable } from '../components/ResultsTable';
 import * as searchService from '../services/search';
 import type { SearchRequest, SearchResponse } from '../types';
@@ -110,6 +111,12 @@ function DashboardContent() {
                 <SummaryCard summary={data?.summary ?? null} />
               )}
             </section>
+
+            {!isLoading && data && searchRequest?.material_code && (data.vendor_comparison?.length ?? 0) > 1 && (
+              <section style={styles.section} aria-label="Vendor comparison">
+                <VendorComparisonChart vendors={data.vendor_comparison} />
+              </section>
+            )}
 
             {/* Results table */}
             {!isLoading && data && (

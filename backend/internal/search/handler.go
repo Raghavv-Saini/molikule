@@ -104,11 +104,25 @@ type plantSummaryResponse struct {
 	LastDate           interface{} `json:"last_date"`
 }
 
+type vendorComparisonResponse struct {
+	VendorCode         string      `json:"vendor_code"`
+	SupplierName       interface{} `json:"supplier_name"`
+	AvgCost            float64     `json:"avg_cost"`
+	AvgNetPrice        float64     `json:"avg_net_price"`
+	CheapestCost       interface{} `json:"cheapest_cost"`
+	LastPurchaseCost   interface{} `json:"last_purchase_cost"`
+	PurchaseOrderCount int64       `json:"purchase_order_count"`
+	RecordCount        int64       `json:"record_count"`
+	Currencies         interface{} `json:"currencies"`
+	Units              interface{} `json:"units"`
+}
+
 // searchResponse is the full JSON body returned by the search endpoint.
 type searchResponse struct {
-	Summary    *summaryResponse    `json:"summary"`
-	Records    []db.PurchaseRecord `json:"records"`
-	Pagination paginationResponse  `json:"pagination"`
+	Summary          *summaryResponse           `json:"summary"`
+	VendorComparison []vendorComparisonResponse `json:"vendor_comparison"`
+	Records          []db.PurchaseRecord        `json:"records"`
+	Pagination       paginationResponse         `json:"pagination"`
 }
 
 // parseNullableDate converts an optional date string (YYYY-MM-DD) to sql.NullTime.
@@ -121,6 +135,13 @@ func parseNullableDate(s *string) (sql.NullTime, error) {
 		return sql.NullTime{}, err
 	}
 	return sql.NullTime{Time: t, Valid: true}, nil
+}
+
+func parseNullableString(s *string) sql.NullString {
+	if s == nil || *s == "" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: *s, Valid: true}
 }
 
 // ceilDiv computes ⌈a/b⌉ for positive integers.
@@ -229,6 +250,28 @@ func plantSummary(row interface{}) *plantSummaryResponse {
 		FirstDate:          fieldValue(row, "EarliestDate"),
 		LastDate:           fieldValue(row, "LatestDate"),
 	}
+}
+
+func vendorComparison(rows []db.VendorComparisonByMaterialRow) []vendorComparisonResponse {
+	if len(rows) == 0 {
+		return nil
+	}
+	items := make([]vendorComparisonResponse, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, vendorComparisonResponse{
+			VendorCode:         row.VendorCode,
+			SupplierName:       row.SupplierName,
+			AvgCost:            row.AvgCost,
+			AvgNetPrice:        row.AvgNetPrice,
+			CheapestCost:       row.MinCost,
+			LastPurchaseCost:   row.LastPurchaseCost,
+			PurchaseOrderCount: row.PurchaseOrderCount,
+			RecordCount:        row.RecordCount,
+			Currencies:         row.Currencies,
+			Units:              row.Units,
+		})
+	}
+	return items
 }
 
 // SearchHandler validates the request, dispatches the right SQLC queries, and
@@ -759,12 +802,28 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 			sumRow.PlantSummary = plantSummary(psRow)
 		}
 
+		var comparison []vendorComparisonResponse
+		if hasMat {
+			comparisonRows, e := queries.VendorComparisonByMaterial(ctx, db.VendorComparisonByMaterialParams{
+				MaterialCode: *req.MaterialCode,
+				VendorCode:   parseNullableString(req.VendorCode),
+				PlantCode:    parseNullableString(req.PlantCode),
+				StartDate:    startDate,
+				EndDate:      endDate,
+			})
+			if e != nil {
+				return models.SendError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", "vendor comparison query failed")
+			}
+			comparison = vendorComparison(comparisonRows)
+		}
+
 		// ── 12. Assemble and return response ──────────────────────────────────
 		totalPages := ceilDiv(totalRecords, int64(req.PageSize))
 
 		return c.Status(fiber.StatusOK).JSON(searchResponse{
-			Summary: &sumRow,
-			Records: records,
+			Summary:          &sumRow,
+			VendorComparison: comparison,
+			Records:          records,
 			Pagination: paginationResponse{
 				Page:         req.Page,
 				PageSize:     req.PageSize,
