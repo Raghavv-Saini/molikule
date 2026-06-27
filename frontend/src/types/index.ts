@@ -57,10 +57,8 @@ export interface VendorSummary {
 export interface MaterialSummary {
   material_code: string;
   description: string | null;
-  avg_cost: number;
-  avg_net_price: number;
-  last_purchase_cost: number | null;
-  cheapest_cost: number | null;
+  total_ordered_quantity: number | string | null;
+  last_purchase_price: number | string | null;
   vendor_count: number;
   plant_count: number;
   purchase_order_count: number;

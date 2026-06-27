@@ -311,8 +311,8 @@ GROUP BY pr.vendor_code;
 -- ============================================================
 -- SECTION C: MATERIAL SUB-SUMMARY QUERIES
 -- Returns per-material aggregate metrics including description.
--- Returned columns: material_code, description, avg_cost, avg_net_price,
---   last_purchase_cost, min_cost, distinct_vendor_count, distinct_plant_count,
+-- Returned columns: material_code, description, total_ordered_quantity,
+--   last_purchase_price, distinct_vendor_count, distinct_plant_count,
 --   purchase_order_count, currencies, units, earliest_date, latest_date
 -- ============================================================
 
@@ -324,12 +324,12 @@ GROUP BY pr.vendor_code;
 SELECT
     pr.material_code,
     MAX(pr.description)                                                    AS description,
-    AVG(pr.cost)                                                           AS avg_cost,
-    AVG(pr.net_price)                                                      AS avg_net_price,
-    (SELECT sub.cost FROM purchase_records sub
+    SUM(pr.quantity)::text                                                 AS total_ordered_quantity,
+    (SELECT sub.net_price FROM purchase_records sub
      WHERE sub.material_code = $1
-     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
-    MIN(pr.cost)                                                           AS min_cost,
+       AND (sqlc.narg('start_date')::date IS NULL OR sub.purchase_date >= sqlc.narg('start_date')::date)
+       AND (sqlc.narg('end_date')::date   IS NULL OR sub.purchase_date <= sqlc.narg('end_date')::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_price,
     COUNT(DISTINCT pr.vendor_code)                                         AS distinct_vendor_count,
     COUNT(DISTINCT pr.plant_code)                                          AS distinct_plant_count,
     COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
@@ -351,13 +351,13 @@ GROUP BY pr.material_code;
 SELECT
     pr.material_code,
     MAX(pr.description)                                                    AS description,
-    AVG(pr.cost)                                                           AS avg_cost,
-    AVG(pr.net_price)                                                      AS avg_net_price,
-    (SELECT sub.cost FROM purchase_records sub
+    SUM(pr.quantity)::text                                                 AS total_ordered_quantity,
+    (SELECT sub.net_price FROM purchase_records sub
      WHERE sub.material_code = $1
        AND sub.vendor_code   = $2
-     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
-    MIN(pr.cost)                                                           AS min_cost,
+       AND (sqlc.narg('start_date')::date IS NULL OR sub.purchase_date >= sqlc.narg('start_date')::date)
+       AND (sqlc.narg('end_date')::date   IS NULL OR sub.purchase_date <= sqlc.narg('end_date')::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_price,
     COUNT(DISTINCT pr.vendor_code)                                         AS distinct_vendor_count,
     COUNT(DISTINCT pr.plant_code)                                          AS distinct_plant_count,
     COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
@@ -380,13 +380,13 @@ GROUP BY pr.material_code;
 SELECT
     pr.material_code,
     MAX(pr.description)                                                    AS description,
-    AVG(pr.cost)                                                           AS avg_cost,
-    AVG(pr.net_price)                                                      AS avg_net_price,
-    (SELECT sub.cost FROM purchase_records sub
+    SUM(pr.quantity)::text                                                 AS total_ordered_quantity,
+    (SELECT sub.net_price FROM purchase_records sub
      WHERE sub.material_code = $1
        AND sub.plant_code    = $2
-     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
-    MIN(pr.cost)                                                           AS min_cost,
+       AND (sqlc.narg('start_date')::date IS NULL OR sub.purchase_date >= sqlc.narg('start_date')::date)
+       AND (sqlc.narg('end_date')::date   IS NULL OR sub.purchase_date <= sqlc.narg('end_date')::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_price,
     COUNT(DISTINCT pr.vendor_code)                                         AS distinct_vendor_count,
     COUNT(DISTINCT pr.plant_code)                                          AS distinct_plant_count,
     COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
@@ -409,14 +409,14 @@ GROUP BY pr.material_code;
 SELECT
     pr.material_code,
     MAX(pr.description)                                                    AS description,
-    AVG(pr.cost)                                                           AS avg_cost,
-    AVG(pr.net_price)                                                      AS avg_net_price,
-    (SELECT sub.cost FROM purchase_records sub
+    SUM(pr.quantity)::text                                                 AS total_ordered_quantity,
+    (SELECT sub.net_price FROM purchase_records sub
      WHERE sub.material_code = $1
        AND sub.vendor_code   = $2
        AND sub.plant_code    = $3
-     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
-    MIN(pr.cost)                                                           AS min_cost,
+       AND (sqlc.narg('start_date')::date IS NULL OR sub.purchase_date >= sqlc.narg('start_date')::date)
+       AND (sqlc.narg('end_date')::date   IS NULL OR sub.purchase_date <= sqlc.narg('end_date')::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_price,
     COUNT(DISTINCT pr.vendor_code)                                         AS distinct_vendor_count,
     COUNT(DISTINCT pr.plant_code)                                          AS distinct_plant_count,
     COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,

@@ -180,7 +180,7 @@ CREATE TABLE purchase_records (
     id              BIGSERIAL PRIMARY KEY,
     plant_code      VARCHAR(4)     NOT NULL,
     material_code   VARCHAR(8)     NOT NULL,
-    vendor_code     VARCHAR(8)     NOT NULL,
+    vendor_code     VARCHAR(6)     NOT NULL,
     description     TEXT,
     purchase_no     VARCHAR(10),
     purchase_date   DATE           NOT NULL,
@@ -360,10 +360,8 @@ export interface VendorSummary {
 export interface MaterialSummary {
   material_code: string;
   description: string | null;
-  avg_cost: number;
-  avg_net_price: number;
-  last_purchase_cost: number | null;
-  cheapest_cost: number | null;
+  total_ordered_quantity: number | string | null;
+  last_purchase_price: number | string | null;
   vendor_count: number;
   plant_count: number;
   purchase_order_count: number;
@@ -458,7 +456,7 @@ Input validation is performed in the handler before any database call. SQLC does
 
 - Employee_ID: regexp `^\d{6}$`
 - Material_Code: regexp `^\d{8}$`
-- Vendor_Code: regexp `^\d{8}$`
+- Vendor_Code: regexp `^\d{6}$`
 - Plant_Code: regexp `^[a-zA-Z0-9]{4}$`
 - At least one of material_code, vendor_code, plant_code must be provided in a search request
 - Page must be ≥ 1; page_size must be between 1 and 200

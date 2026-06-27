@@ -16,12 +16,12 @@ const materialSubSummaryMaterial = `-- name: MaterialSubSummaryMaterial :one
 SELECT
     pr.material_code,
     MAX(pr.description)                                                    AS description,
-    AVG(pr.cost)                                                           AS avg_cost,
-    AVG(pr.net_price)                                                      AS avg_net_price,
-    (SELECT sub.cost FROM purchase_records sub
+    SUM(pr.quantity)::text                                                 AS total_ordered_quantity,
+    (SELECT sub.net_price FROM purchase_records sub
      WHERE sub.material_code = $1
-     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
-    MIN(pr.cost)                                                           AS min_cost,
+       AND ($2::date IS NULL OR sub.purchase_date >= $2::date)
+       AND ($3::date   IS NULL OR sub.purchase_date <= $3::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_price,
     COUNT(DISTINCT pr.vendor_code)                                         AS distinct_vendor_count,
     COUNT(DISTINCT pr.plant_code)                                          AS distinct_plant_count,
     COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
@@ -43,27 +43,25 @@ type MaterialSubSummaryMaterialParams struct {
 }
 
 type MaterialSubSummaryMaterialRow struct {
-	MaterialCode        string         `json:"material_code"`
-	Description         interface{}    `json:"description"`
-	AvgCost             float64        `json:"avg_cost"`
-	AvgNetPrice         float64        `json:"avg_net_price"`
-	LastPurchaseCost    sql.NullString `json:"last_purchase_cost"`
-	MinCost             interface{}    `json:"min_cost"`
-	DistinctVendorCount int64          `json:"distinct_vendor_count"`
-	DistinctPlantCount  int64          `json:"distinct_plant_count"`
-	PurchaseOrderCount  int64          `json:"purchase_order_count"`
-	Currencies          interface{}    `json:"currencies"`
-	Units               interface{}    `json:"units"`
-	EarliestDate        interface{}    `json:"earliest_date"`
-	LatestDate          interface{}    `json:"latest_date"`
+	MaterialCode         string         `json:"material_code"`
+	Description          interface{}    `json:"description"`
+	TotalOrderedQuantity string         `json:"total_ordered_quantity"`
+	LastPurchasePrice    sql.NullString `json:"last_purchase_price"`
+	DistinctVendorCount  int64          `json:"distinct_vendor_count"`
+	DistinctPlantCount   int64          `json:"distinct_plant_count"`
+	PurchaseOrderCount   int64          `json:"purchase_order_count"`
+	Currencies           interface{}    `json:"currencies"`
+	Units                interface{}    `json:"units"`
+	EarliestDate         interface{}    `json:"earliest_date"`
+	LatestDate           interface{}    `json:"latest_date"`
 }
 
 // ============================================================
 // SECTION C: MATERIAL SUB-SUMMARY QUERIES
 // Returns per-material aggregate metrics including description.
-// Returned columns: material_code, description, avg_cost, avg_net_price,
+// Returned columns: material_code, description, total_ordered_quantity,
 //
-//	last_purchase_cost, min_cost, distinct_vendor_count, distinct_plant_count,
+//	last_purchase_price, distinct_vendor_count, distinct_plant_count,
 //	purchase_order_count, currencies, units, earliest_date, latest_date
 //
 // ============================================================
@@ -76,10 +74,8 @@ func (q *Queries) MaterialSubSummaryMaterial(ctx context.Context, arg MaterialSu
 	err := row.Scan(
 		&i.MaterialCode,
 		&i.Description,
-		&i.AvgCost,
-		&i.AvgNetPrice,
-		&i.LastPurchaseCost,
-		&i.MinCost,
+		&i.TotalOrderedQuantity,
+		&i.LastPurchasePrice,
 		&i.DistinctVendorCount,
 		&i.DistinctPlantCount,
 		&i.PurchaseOrderCount,
@@ -96,13 +92,13 @@ const materialSubSummaryMaterialPlant = `-- name: MaterialSubSummaryMaterialPlan
 SELECT
     pr.material_code,
     MAX(pr.description)                                                    AS description,
-    AVG(pr.cost)                                                           AS avg_cost,
-    AVG(pr.net_price)                                                      AS avg_net_price,
-    (SELECT sub.cost FROM purchase_records sub
+    SUM(pr.quantity)::text                                                 AS total_ordered_quantity,
+    (SELECT sub.net_price FROM purchase_records sub
      WHERE sub.material_code = $1
        AND sub.plant_code    = $2
-     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
-    MIN(pr.cost)                                                           AS min_cost,
+       AND ($3::date IS NULL OR sub.purchase_date >= $3::date)
+       AND ($4::date   IS NULL OR sub.purchase_date <= $4::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_price,
     COUNT(DISTINCT pr.vendor_code)                                         AS distinct_vendor_count,
     COUNT(DISTINCT pr.plant_code)                                          AS distinct_plant_count,
     COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
@@ -126,19 +122,17 @@ type MaterialSubSummaryMaterialPlantParams struct {
 }
 
 type MaterialSubSummaryMaterialPlantRow struct {
-	MaterialCode        string         `json:"material_code"`
-	Description         interface{}    `json:"description"`
-	AvgCost             float64        `json:"avg_cost"`
-	AvgNetPrice         float64        `json:"avg_net_price"`
-	LastPurchaseCost    sql.NullString `json:"last_purchase_cost"`
-	MinCost             interface{}    `json:"min_cost"`
-	DistinctVendorCount int64          `json:"distinct_vendor_count"`
-	DistinctPlantCount  int64          `json:"distinct_plant_count"`
-	PurchaseOrderCount  int64          `json:"purchase_order_count"`
-	Currencies          interface{}    `json:"currencies"`
-	Units               interface{}    `json:"units"`
-	EarliestDate        interface{}    `json:"earliest_date"`
-	LatestDate          interface{}    `json:"latest_date"`
+	MaterialCode         string         `json:"material_code"`
+	Description          interface{}    `json:"description"`
+	TotalOrderedQuantity string         `json:"total_ordered_quantity"`
+	LastPurchasePrice    sql.NullString `json:"last_purchase_price"`
+	DistinctVendorCount  int64          `json:"distinct_vendor_count"`
+	DistinctPlantCount   int64          `json:"distinct_plant_count"`
+	PurchaseOrderCount   int64          `json:"purchase_order_count"`
+	Currencies           interface{}    `json:"currencies"`
+	Units                interface{}    `json:"units"`
+	EarliestDate         interface{}    `json:"earliest_date"`
+	LatestDate           interface{}    `json:"latest_date"`
 }
 
 // ============================================================
@@ -155,10 +149,8 @@ func (q *Queries) MaterialSubSummaryMaterialPlant(ctx context.Context, arg Mater
 	err := row.Scan(
 		&i.MaterialCode,
 		&i.Description,
-		&i.AvgCost,
-		&i.AvgNetPrice,
-		&i.LastPurchaseCost,
-		&i.MinCost,
+		&i.TotalOrderedQuantity,
+		&i.LastPurchasePrice,
 		&i.DistinctVendorCount,
 		&i.DistinctPlantCount,
 		&i.PurchaseOrderCount,
@@ -175,13 +167,13 @@ const materialSubSummaryMaterialVendor = `-- name: MaterialSubSummaryMaterialVen
 SELECT
     pr.material_code,
     MAX(pr.description)                                                    AS description,
-    AVG(pr.cost)                                                           AS avg_cost,
-    AVG(pr.net_price)                                                      AS avg_net_price,
-    (SELECT sub.cost FROM purchase_records sub
+    SUM(pr.quantity)::text                                                 AS total_ordered_quantity,
+    (SELECT sub.net_price FROM purchase_records sub
      WHERE sub.material_code = $1
        AND sub.vendor_code   = $2
-     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
-    MIN(pr.cost)                                                           AS min_cost,
+       AND ($3::date IS NULL OR sub.purchase_date >= $3::date)
+       AND ($4::date   IS NULL OR sub.purchase_date <= $4::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_price,
     COUNT(DISTINCT pr.vendor_code)                                         AS distinct_vendor_count,
     COUNT(DISTINCT pr.plant_code)                                          AS distinct_plant_count,
     COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
@@ -205,19 +197,17 @@ type MaterialSubSummaryMaterialVendorParams struct {
 }
 
 type MaterialSubSummaryMaterialVendorRow struct {
-	MaterialCode        string         `json:"material_code"`
-	Description         interface{}    `json:"description"`
-	AvgCost             float64        `json:"avg_cost"`
-	AvgNetPrice         float64        `json:"avg_net_price"`
-	LastPurchaseCost    sql.NullString `json:"last_purchase_cost"`
-	MinCost             interface{}    `json:"min_cost"`
-	DistinctVendorCount int64          `json:"distinct_vendor_count"`
-	DistinctPlantCount  int64          `json:"distinct_plant_count"`
-	PurchaseOrderCount  int64          `json:"purchase_order_count"`
-	Currencies          interface{}    `json:"currencies"`
-	Units               interface{}    `json:"units"`
-	EarliestDate        interface{}    `json:"earliest_date"`
-	LatestDate          interface{}    `json:"latest_date"`
+	MaterialCode         string         `json:"material_code"`
+	Description          interface{}    `json:"description"`
+	TotalOrderedQuantity string         `json:"total_ordered_quantity"`
+	LastPurchasePrice    sql.NullString `json:"last_purchase_price"`
+	DistinctVendorCount  int64          `json:"distinct_vendor_count"`
+	DistinctPlantCount   int64          `json:"distinct_plant_count"`
+	PurchaseOrderCount   int64          `json:"purchase_order_count"`
+	Currencies           interface{}    `json:"currencies"`
+	Units                interface{}    `json:"units"`
+	EarliestDate         interface{}    `json:"earliest_date"`
+	LatestDate           interface{}    `json:"latest_date"`
 }
 
 // ============================================================
@@ -234,10 +224,8 @@ func (q *Queries) MaterialSubSummaryMaterialVendor(ctx context.Context, arg Mate
 	err := row.Scan(
 		&i.MaterialCode,
 		&i.Description,
-		&i.AvgCost,
-		&i.AvgNetPrice,
-		&i.LastPurchaseCost,
-		&i.MinCost,
+		&i.TotalOrderedQuantity,
+		&i.LastPurchasePrice,
 		&i.DistinctVendorCount,
 		&i.DistinctPlantCount,
 		&i.PurchaseOrderCount,
@@ -254,14 +242,14 @@ const materialSubSummaryMaterialVendorPlant = `-- name: MaterialSubSummaryMateri
 SELECT
     pr.material_code,
     MAX(pr.description)                                                    AS description,
-    AVG(pr.cost)                                                           AS avg_cost,
-    AVG(pr.net_price)                                                      AS avg_net_price,
-    (SELECT sub.cost FROM purchase_records sub
+    SUM(pr.quantity)::text                                                 AS total_ordered_quantity,
+    (SELECT sub.net_price FROM purchase_records sub
      WHERE sub.material_code = $1
        AND sub.vendor_code   = $2
        AND sub.plant_code    = $3
-     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_cost,
-    MIN(pr.cost)                                                           AS min_cost,
+       AND ($4::date IS NULL OR sub.purchase_date >= $4::date)
+       AND ($5::date   IS NULL OR sub.purchase_date <= $5::date)
+     ORDER BY sub.purchase_date DESC, sub.id DESC LIMIT 1)                AS last_purchase_price,
     COUNT(DISTINCT pr.vendor_code)                                         AS distinct_vendor_count,
     COUNT(DISTINCT pr.plant_code)                                          AS distinct_plant_count,
     COUNT(DISTINCT pr.purchase_no)                                         AS purchase_order_count,
@@ -287,19 +275,17 @@ type MaterialSubSummaryMaterialVendorPlantParams struct {
 }
 
 type MaterialSubSummaryMaterialVendorPlantRow struct {
-	MaterialCode        string         `json:"material_code"`
-	Description         interface{}    `json:"description"`
-	AvgCost             float64        `json:"avg_cost"`
-	AvgNetPrice         float64        `json:"avg_net_price"`
-	LastPurchaseCost    sql.NullString `json:"last_purchase_cost"`
-	MinCost             interface{}    `json:"min_cost"`
-	DistinctVendorCount int64          `json:"distinct_vendor_count"`
-	DistinctPlantCount  int64          `json:"distinct_plant_count"`
-	PurchaseOrderCount  int64          `json:"purchase_order_count"`
-	Currencies          interface{}    `json:"currencies"`
-	Units               interface{}    `json:"units"`
-	EarliestDate        interface{}    `json:"earliest_date"`
-	LatestDate          interface{}    `json:"latest_date"`
+	MaterialCode         string         `json:"material_code"`
+	Description          interface{}    `json:"description"`
+	TotalOrderedQuantity string         `json:"total_ordered_quantity"`
+	LastPurchasePrice    sql.NullString `json:"last_purchase_price"`
+	DistinctVendorCount  int64          `json:"distinct_vendor_count"`
+	DistinctPlantCount   int64          `json:"distinct_plant_count"`
+	PurchaseOrderCount   int64          `json:"purchase_order_count"`
+	Currencies           interface{}    `json:"currencies"`
+	Units                interface{}    `json:"units"`
+	EarliestDate         interface{}    `json:"earliest_date"`
+	LatestDate           interface{}    `json:"latest_date"`
 }
 
 // ============================================================
@@ -317,10 +303,8 @@ func (q *Queries) MaterialSubSummaryMaterialVendorPlant(ctx context.Context, arg
 	err := row.Scan(
 		&i.MaterialCode,
 		&i.Description,
-		&i.AvgCost,
-		&i.AvgNetPrice,
-		&i.LastPurchaseCost,
-		&i.MinCost,
+		&i.TotalOrderedQuantity,
+		&i.LastPurchasePrice,
 		&i.DistinctVendorCount,
 		&i.DistinctPlantCount,
 		&i.PurchaseOrderCount,

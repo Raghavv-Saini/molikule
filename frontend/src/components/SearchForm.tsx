@@ -3,7 +3,7 @@ import type { SearchRequest } from '../types';
 
 // Validation regexes per requirements 4.3, 4.4, 4.5
 const MATERIAL_CODE_PATTERN = /^\d{8}$/;
-const VENDOR_CODE_PATTERN = /^\d{8}$/;
+const VENDOR_CODE_PATTERN = /^\d{6}$/;
 const PLANT_CODE_PATTERN = /^[a-zA-Z0-9]{4}$/;
 
 // Date input is entered as DD MM YYYY and submitted to the API as YYYY-MM-DD.
@@ -72,7 +72,7 @@ function validateMaterialCode(value: string): string {
 
 function validateVendorCode(value: string): string {
   if (value && !VENDOR_CODE_PATTERN.test(value)) {
-    return 'Vendor Code must be exactly 8 numeric digits.';
+    return 'Vendor Code must be exactly 6 numeric digits.';
   }
   return '';
 }
@@ -215,8 +215,8 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
             id="vendor-code"
             type="text"
             inputMode="numeric"
-            maxLength={8}
-            placeholder="8-digit code"
+            maxLength={6}
+            placeholder="6-digit code"
             value={vendorCode}
             onChange={(e) => {
               setVendorCode(e.target.value);

@@ -106,14 +106,10 @@ function CoreMetrics({ summary }: { summary: SearchSummary }) {
     <>
       <SectionHeading title="Overall Metrics" />
       <MetricRow label="Records Found" value={formatNumber(summary.records_found)} />
-      <MetricRow label="Total Cost" value={formatCost(summary.total_cost)} />
-      <MetricRow label="Avg Cost" value={formatCost(summary.avg_cost)} />
-      <MetricRow label="Avg Net Price" value={formatCost(summary.avg_net_price)} />
-      <MetricRow label="Min Cost" value={formatCost(summary.min_cost)} />
-      <MetricRow label="Max Cost" value={formatCost(summary.max_cost)} />
+      <MetricRow label="Total Order Cost" value={formatCost(summary.total_cost)} />
+      <MetricRow label="Average Order Cost" value={formatCost(summary.avg_cost)} />
+      <MetricRow label="Average Net Unit Price" value={formatCost(summary.avg_net_price)} />
       <MetricRow label="Purchase Orders" value={formatNumber(summary.purchase_order_count)} />
-      <MetricRow label="Earliest Date" value={formatDate(summary.earliest_date)} />
-      <MetricRow label="Latest Date" value={formatDate(summary.latest_date)} />
       <MetricRow label="Currencies" value={formatList(summary.currencies)} />
       <MetricRow label="Units" value={formatList(summary.units)} />
     </>
@@ -146,10 +142,8 @@ function MaterialSection({ ms }: { ms: MaterialSummary }) {
       {formatText(ms.description) !== '—' && (
         <MetricRow label="Description" value={formatText(ms.description)} />
       )}
-      <MetricRow label="Avg Purchase Cost" value={formatCost(ms.avg_cost)} />
-      <MetricRow label="Avg Net Price" value={formatCost(ms.avg_net_price)} />
-      <MetricRow label="Last Purchase Cost" value={formatCost(ms.last_purchase_cost)} />
-      <MetricRow label="Cheapest Purchase Cost" value={formatCost(ms.cheapest_cost)} />
+      <MetricRow label="Total Ordered Quantity" value={formatNumber(ms.total_ordered_quantity)} />
+      <MetricRow label="Last Purchase Price (LPP)" value={formatCost(ms.last_purchase_price)} />
       <MetricRow label="Vendor Count" value={formatNumber(ms.vendor_count)} />
       <MetricRow label="Plant Count" value={formatNumber(ms.plant_count)} />
       <MetricRow label="Purchase Orders" value={formatNumber(ms.purchase_order_count)} />

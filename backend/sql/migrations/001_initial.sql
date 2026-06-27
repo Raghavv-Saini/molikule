@@ -6,7 +6,7 @@ CREATE TABLE purchase_records (
     id              BIGSERIAL      PRIMARY KEY,
     plant_code      VARCHAR(4)     NOT NULL,
     material_code   VARCHAR(8)     NOT NULL,
-    vendor_code     VARCHAR(8)     NOT NULL,
+    vendor_code     VARCHAR(6)     NOT NULL,
     description     TEXT,
     purchase_no     VARCHAR(10),
     purchase_date   DATE           NOT NULL,

@@ -103,7 +103,7 @@ Implement the full Molikule application — a Go/Fiber backend with PostgreSQL/S
     - Parse and validate request body:
       - Return 400 if all three code fields are absent
       - Validate material_code with `^\d{8}$` if present; return 400 on mismatch
-      - Validate vendor_code with `^\d{8}$` if present; return 400 on mismatch
+      - Validate vendor_code with `^\d{6}$` if present; return 400 on mismatch
       - Validate plant_code with `^[a-zA-Z0-9]{4}$` if present; return 400 on mismatch
       - Validate sort_by ∈ {purchase_date, cost, net_price} and sort_order ∈ {asc, desc} when provided
     - Determine active filter combination and call the corresponding `search.sql` query with LIMIT/OFFSET
@@ -185,8 +185,8 @@ Implement the full Molikule application — a Go/Fiber backend with PostgreSQL/S
 
 - [ ] 14. Implement SearchForm component
   - Create `frontend/src/components/SearchForm.tsx`
-    - Render inputs for Material Code (8 digits), Vendor Code (8 digits), Plant Code (4 alphanumeric), Start Date, End Date
-    - Client-side validate each code field on blur and on submit: material/vendor must match `^\d{8}$`, plant must match `^[a-zA-Z0-9]{4}$`; show inline error messages below each field
+    - Render inputs for Material Code (8 digits), Vendor Code (6 digits), Plant Code (4 alphanumeric), Start Date, End Date
+    - Client-side validate each code field on blur and on submit: material must match `^\d{8}$`, vendor must match `^\d{6}$`, plant must match `^[a-zA-Z0-9]{4}$`; show inline error messages below each field
     - Validate at least one of material_code, vendor_code, plant_code is filled before submitting; show a form-level error if all three are empty
     - Disable submit button and show loading indicator while a search is in progress
     - Accept `onSearch` callback; call it with the validated `SearchRequest` on submit
@@ -196,7 +196,7 @@ Implement the full Molikule application — a Go/Fiber backend with PostgreSQL/S
   - Create `frontend/src/components/SummaryCard.tsx`
     - Accept a `summary: SearchSummary | null` prop
     - When `summary` is null, display "No data available"
-    - Always display the core metrics: Records Found, Total Cost, Avg Cost, Avg Net Price, Min/Max Cost, PO Count, Earliest/Latest Date, Currencies, Units
+    - Always display the core metrics: Records Found, Total Order Cost, Average Order Cost, Average Net Unit Price, PO Count, Currencies, Units
     - When `summary.vendor_summary` is non-null, render a Vendor Summary section with all fields from `VendorSummary`
     - When `summary.material_summary` is non-null, render a Material Summary section with all fields from `MaterialSummary`
     - When `summary.plant_summary` is non-null, render a Plant Summary section with all fields from `PlantSummary`

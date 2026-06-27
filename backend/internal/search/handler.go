@@ -15,7 +15,7 @@ import (
 
 var (
 	materialCodeRegex = regexp.MustCompile(`^\d{8}$`)
-	vendorCodeRegex   = regexp.MustCompile(`^\d{8}$`)
+	vendorCodeRegex   = regexp.MustCompile(`^\d{6}$`)
 	plantCodeRegex    = regexp.MustCompile(`^[a-zA-Z0-9]{4}$`)
 )
 
@@ -59,19 +59,17 @@ type summaryResponse struct {
 }
 
 type materialSummaryResponse struct {
-	MaterialCode       string      `json:"material_code"`
-	Description        interface{} `json:"description"`
-	AvgCost            float64     `json:"avg_cost"`
-	AvgNetPrice        float64     `json:"avg_net_price"`
-	LastPurchaseCost   interface{} `json:"last_purchase_cost"`
-	CheapestCost       interface{} `json:"cheapest_cost"`
-	VendorCount        int64       `json:"vendor_count"`
-	PlantCount         int64       `json:"plant_count"`
-	PurchaseOrderCount int64       `json:"purchase_order_count"`
-	Currencies         interface{} `json:"currencies"`
-	Units              interface{} `json:"units"`
-	FirstDate          interface{} `json:"first_date"`
-	LastDate           interface{} `json:"last_date"`
+	MaterialCode         string      `json:"material_code"`
+	Description          interface{} `json:"description"`
+	TotalOrderedQuantity interface{} `json:"total_ordered_quantity"`
+	LastPurchasePrice    interface{} `json:"last_purchase_price"`
+	VendorCount          int64       `json:"vendor_count"`
+	PlantCount           int64       `json:"plant_count"`
+	PurchaseOrderCount   int64       `json:"purchase_order_count"`
+	Currencies           interface{} `json:"currencies"`
+	Units                interface{} `json:"units"`
+	FirstDate            interface{} `json:"first_date"`
+	LastDate             interface{} `json:"last_date"`
 }
 
 type vendorSummaryResponse struct {
@@ -196,19 +194,17 @@ func materialSummary(row interface{}) *materialSummaryResponse {
 		return nil
 	}
 	return &materialSummaryResponse{
-		MaterialCode:       stringField(row, "MaterialCode"),
-		Description:        fieldValue(row, "Description"),
-		AvgCost:            float64Field(row, "AvgCost"),
-		AvgNetPrice:        float64Field(row, "AvgNetPrice"),
-		LastPurchaseCost:   fieldValue(row, "LastPurchaseCost"),
-		CheapestCost:       fieldValue(row, "MinCost"),
-		VendorCount:        int64Field(row, "DistinctVendorCount"),
-		PlantCount:         int64Field(row, "DistinctPlantCount"),
-		PurchaseOrderCount: int64Field(row, "PurchaseOrderCount"),
-		Currencies:         fieldValue(row, "Currencies"),
-		Units:              fieldValue(row, "Units"),
-		FirstDate:          fieldValue(row, "EarliestDate"),
-		LastDate:           fieldValue(row, "LatestDate"),
+		MaterialCode:         stringField(row, "MaterialCode"),
+		Description:          fieldValue(row, "Description"),
+		TotalOrderedQuantity: fieldValue(row, "TotalOrderedQuantity"),
+		LastPurchasePrice:    fieldValue(row, "LastPurchasePrice"),
+		VendorCount:          int64Field(row, "DistinctVendorCount"),
+		PlantCount:           int64Field(row, "DistinctPlantCount"),
+		PurchaseOrderCount:   int64Field(row, "PurchaseOrderCount"),
+		Currencies:           fieldValue(row, "Currencies"),
+		Units:                fieldValue(row, "Units"),
+		FirstDate:            fieldValue(row, "EarliestDate"),
+		LastDate:             fieldValue(row, "LatestDate"),
 	}
 }
 
@@ -304,7 +300,7 @@ func SearchHandler(queries *db.Queries) fiber.Handler {
 		}
 		if hasVen && !vendorCodeRegex.MatchString(*req.VendorCode) {
 			return models.SendError(c, fiber.StatusBadRequest, "VALIDATION_ERROR",
-				"vendor_code must be exactly 8 numeric digits")
+				"vendor_code must be exactly 6 numeric digits")
 		}
 		if hasPla && !plantCodeRegex.MatchString(*req.PlantCode) {
 			return models.SendError(c, fiber.StatusBadRequest, "VALIDATION_ERROR",

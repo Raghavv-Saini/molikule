@@ -87,7 +87,7 @@ def create_table(cursor, table_name):
         id              BIGSERIAL PRIMARY KEY,
         plant_code      VARCHAR(4)     NOT NULL,
         material_code   VARCHAR(8)     NOT NULL,
-        vendor_code     VARCHAR(8)     NOT NULL,
+        vendor_code     VARCHAR(6)     NOT NULL,
         description     TEXT,
         purchase_no     VARCHAR(10),
         purchase_date   DATE           NOT NULL,
@@ -150,7 +150,7 @@ def migrate_data(cursor, df, table_name):
         try:
             plant_code = str(row.get('PlantCode', '')).strip()[:4]
             material_code = str(row.get('MaterialCode', '')).strip()[:8]
-            vendor_code = str(row.get('VendorCode', '')).strip()[:8]
+            vendor_code = str(row.get('VendorCode', '')).strip()[:6]
             description = str(row.get('Description', ''))
             purchase_no = str(row.get('PurchaseNo', '')).strip()[:10]
             purchase_date = convert_date(row.get('Date'))
