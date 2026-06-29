@@ -1,53 +1,86 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import * as authService from '../services/auth';
-import type { User } from '../types';
 import { AuthContext } from './auth-context';
+import {
+  AUTH_EXPIRED_EVENT,
+  clearStoredAuth,
+  notifyAuthExpired,
+  readStoredAuth,
+  writeStoredAuth,
+  type StoredAuthState,
+} from '../utils/authStorage';
 
-const TOKEN_KEY = 'molikule_token';
-const USER_KEY = 'molikule_user';
-
-interface StoredAuthState {
-  token: string | null;
-  user: User | null;
+interface JwtPayload {
+  exp?: number;
 }
 
-function readStoredAuth(): StoredAuthState {
-  const storedToken = localStorage.getItem(TOKEN_KEY);
-  const storedUser = localStorage.getItem(USER_KEY);
-  if (!storedToken || !storedUser) {
+function getTokenExpiryMs(token: string): number | null {
+  const [, payload] = token.split('.');
+  if (!payload) return null;
+
+  try {
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = window.atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
+    const parsed = JSON.parse(json) as JwtPayload;
+    return typeof parsed.exp === 'number' ? parsed.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function readValidStoredAuth(): StoredAuthState {
+  const storedAuth = readStoredAuth();
+  if (!storedAuth.token) return storedAuth;
+
+  const expiresAt = getTokenExpiryMs(storedAuth.token);
+  if (expiresAt !== null && expiresAt <= Date.now()) {
+    clearStoredAuth();
     return { token: null, user: null };
   }
 
-  try {
-    return {
-      token: storedToken,
-      user: JSON.parse(storedUser) as User,
-    };
-  } catch {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    return { token: null, user: null };
-  }
+  return storedAuth;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authState, setAuthState] = useState<StoredAuthState>(() => readStoredAuth());
+  const [authState, setAuthState] = useState<StoredAuthState>(() => readValidStoredAuth());
+
+  const logout = useCallback((): void => {
+    clearStoredAuth();
+    setAuthState({ token: null, user: null });
+  }, []);
 
   const login = async (employee_id: string, password: string): Promise<void> => {
     const authState = await authService.login(employee_id, password);
-    localStorage.setItem(TOKEN_KEY, authState.token);
-    localStorage.setItem(USER_KEY, JSON.stringify(authState.user));
+    writeStoredAuth(authState);
     setAuthState({
       token: authState.token,
       user: authState.user,
     });
   };
 
-  const logout = (): void => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    setAuthState({ token: null, user: null });
-  };
+  useEffect(() => {
+    window.addEventListener(AUTH_EXPIRED_EVENT, logout);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, logout);
+  }, [logout]);
+
+  useEffect(() => {
+    if (!authState.token) return undefined;
+
+    const expiresAt = getTokenExpiryMs(authState.token);
+    if (expiresAt === null) return undefined;
+
+    const delay = expiresAt - Date.now();
+    if (delay <= 0) {
+      notifyAuthExpired();
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      notifyAuthExpired();
+    }, delay);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [authState.token]);
 
   return (
     <AuthContext.Provider

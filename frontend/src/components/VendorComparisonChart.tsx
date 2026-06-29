@@ -43,6 +43,20 @@ function formatNumber(value: number): string {
   return value.toLocaleString();
 }
 
+function formatList(values: unknown): string {
+  const unwrapped = unwrapNullable(values);
+  if (!unwrapped) return '—';
+  if (Array.isArray(unwrapped)) {
+    const formatted = unwrapped.map(formatText).filter((value) => value !== '—');
+    return formatted.length > 0 ? formatted.join(', ') : '—';
+  }
+  if (typeof unwrapped === 'string') {
+    const trimmed = unwrapped.trim();
+    return trimmed || '—';
+  }
+  return '—';
+}
+
 function numericValue(value: unknown): number {
   const unwrapped = unwrapNullable(value);
   const numeric = typeof unwrapped === 'number' ? unwrapped : Number(unwrapped);
@@ -79,11 +93,11 @@ export function VendorComparisonChart({ vendors }: VendorComparisonChartProps) {
         <div style={styles.legend} aria-label="Chart legend">
           <span style={styles.legendItem}>
             <span style={{ ...styles.legendSwatch, backgroundColor: '#2563eb' }} />
-            Avg Cost
+            Avg Order Cost
           </span>
           <span style={styles.legendItem}>
             <span style={{ ...styles.legendSwatch, backgroundColor: '#0f766e' }} />
-            Avg Net Price
+            Avg Net Unit Price
           </span>
         </div>
       </div>
@@ -92,6 +106,7 @@ export function VendorComparisonChart({ vendors }: VendorComparisonChartProps) {
         {rows.map((row) => {
           const supplier = formatText(row.supplier_name);
           const label = supplier === '—' ? row.vendor_code : supplier;
+          const currencies = formatList(row.currencies);
 
           return (
             <div key={row.vendor_code} style={styles.row}>
@@ -102,7 +117,7 @@ export function VendorComparisonChart({ vendors }: VendorComparisonChartProps) {
 
               <div style={styles.barGroup}>
                 <div style={styles.metricLine}>
-                  <span style={styles.metricName}>Cost</span>
+                  <span style={styles.metricName}>Avg Order Cost</span>
                   <div style={styles.track}>
                     <div
                       style={{
@@ -116,7 +131,7 @@ export function VendorComparisonChart({ vendors }: VendorComparisonChartProps) {
                 </div>
 
                 <div style={styles.metricLine}>
-                  <span style={styles.metricName}>Net</span>
+                  <span style={styles.metricName}>Avg Net Unit Price</span>
                   <div style={styles.track}>
                     <div
                       style={{
@@ -131,6 +146,7 @@ export function VendorComparisonChart({ vendors }: VendorComparisonChartProps) {
               </div>
 
               <div style={styles.counts}>
+                <span style={styles.countItem}>Currencies: {currencies}</span>
                 <span style={styles.countItem}>{formatNumber(row.purchase_order_count)} POs</span>
                 <span style={styles.countItem}>{formatNumber(row.record_count)} records</span>
               </div>
@@ -198,7 +214,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   row: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(170px, 230px) minmax(360px, 1fr) minmax(140px, auto)',
+    gridTemplateColumns: 'minmax(170px, 230px) minmax(470px, 1fr) minmax(180px, auto)',
     alignItems: 'center',
     gap: '18px',
     padding: '12px 0',
@@ -231,7 +247,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   metricLine: {
     display: 'grid',
-    gridTemplateColumns: '36px minmax(120px, 1fr) 96px',
+    gridTemplateColumns: '150px minmax(120px, 1fr) 96px',
     alignItems: 'center',
     gap: '10px',
   },

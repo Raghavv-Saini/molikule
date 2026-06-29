@@ -2,260 +2,206 @@
 
 ## Step 1: Install Dependencies
 
+From `datamigration/files`:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-## Step 2: Set Up PostgreSQL (if needed)
+## Step 2: Prepare PostgreSQL
 
-### On Linux (Ubuntu/Debian):
+The script uses hard-coded database settings in `excel_to_postgres.py`:
+
+```text
+host: localhost
+port: 5432
+user: molikule_user
+password: molikule123
+database: molikule
+table: purchase_records
+```
+
+Create the database and user if they do not already exist:
+
+```sql
+CREATE DATABASE molikule;
+CREATE USER molikule_user WITH PASSWORD 'molikule123';
+GRANT ALL PRIVILEGES ON DATABASE molikule TO molikule_user;
+```
+
+If table creation fails with a schema permission error:
+
+```sql
+\c molikule
+GRANT ALL ON SCHEMA public TO molikule_user;
+```
+
+## Step 3: Check the Excel File
+
+Make sure this file exists:
+
+```text
+datamigration/files/Materials_Database.xlsx
+```
+
+Required columns:
+
+```text
+PlantCode, MaterialCode, VendorCode, Description, PurchaseNo, Date,
+NetPrice, Cost, SupplyingPlant, Quantity, Currency, Units
+```
+
+`VendorCode` must be 6 digits. Longer values are trimmed to 6 characters and logged.
+
+## Step 4: Run the Migration
+
+From `datamigration/files`:
+
 ```bash
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-sudo systemctl start postgresql
+python3 excel_to_postgres.py
 ```
 
-### On macOS:
-```bash
-brew install postgresql
-brew services start postgresql
-```
-
-### On Windows:
-Download and install from: https://www.postgresql.org/download/windows/
-
-## Step 3: Create a Database
+Or from the repository root:
 
 ```bash
-# Connect to PostgreSQL
-psql -U postgres
-
-# Create your database
-CREATE DATABASE pharma_db;
-
-# Exit
-\q
+python3 datamigration/files/excel_to_postgres.py
 ```
 
-## Step 4: Run the Migration Script
+The script does not ask for prompts. Change `DB_CONFIG` in `excel_to_postgres.py` if the database settings are different.
+
+Important: if `purchase_records` already exists, the script drops and recreates it.
+
+## Step 5: Watch Terminal Logs
+
+The script logs every major stage with timestamps:
+
+```text
+Starting Excel read
+Excel file found
+Excel read complete
+Required column validation passed
+Connecting to PostgreSQL
+PostgreSQL connection established
+Checking whether table exists
+Creating table
+Creating indexes
+Starting data migration
+Migration progress
+Committing transaction
+Migration completed successfully
+```
+
+For large files, wait for the `Excel read complete` and `Migration progress` messages before assuming it is stuck.
+
+## Step 6: Verify the Migration
+
+Connect to PostgreSQL:
 
 ```bash
-python excel_to_postgres.py
+psql -U molikule_user -d molikule
 ```
 
-### When Prompted, Enter:
-```
-Enter PostgreSQL host (default: localhost): localhost
-Enter PostgreSQL port (default: 5432): 5432
-Enter PostgreSQL username (default: postgres): postgres
-Enter PostgreSQL password: your_password
-Enter database name: pharma_db
-Enter table name (default: purchase_records): purchase_records
-```
+Check the table:
 
-## Step 5: Verify the Migration
-
-```bash
-# Connect to your database
-psql -U postgres -d pharma_db
-
-# Check the table
+```sql
 \dt
-
-# Count records
-SELECT COUNT(*) FROM purchase_records;
-
-# View sample data
-SELECT * FROM purchase_records LIMIT 5;
-
-# Exit
-\q
-```
-
-## Common Commands for PostgreSQL
-
-### Connect to Database
-```bash
-psql -U postgres -d pharma_db
-```
-
-### List Databases
-```sql
-\l
-```
-
-### List Tables
-```sql
-\dt
-```
-
-### Describe Table
-```sql
 \d purchase_records
 ```
 
-### Query Examples
+Count records:
 
-**Get all records:**
 ```sql
-SELECT * FROM purchase_records;
+SELECT COUNT(*) FROM purchase_records;
 ```
 
-**Count by currency:**
+View sample data:
+
 ```sql
-SELECT currency, COUNT(*) FROM purchase_records GROUP BY currency;
+SELECT * FROM purchase_records LIMIT 5;
 ```
 
-**Find expensive items:**
+Check indexes:
+
 ```sql
-SELECT description, net_price, cost 
-FROM purchase_records 
-WHERE cost > 10000 
+SELECT indexname
+FROM pg_indexes
+WHERE tablename = 'purchase_records';
+```
+
+## Useful Queries
+
+Count by currency:
+
+```sql
+SELECT currency, COUNT(*)
+FROM purchase_records
+GROUP BY currency;
+```
+
+Find expensive items:
+
+```sql
+SELECT description, net_price, cost
+FROM purchase_records
+WHERE cost > 10000
 ORDER BY cost DESC;
 ```
 
-**Get purchases by plant:**
+Purchases by plant:
+
 ```sql
-SELECT plant_code, COUNT(*) as count, SUM(cost) as total_cost
+SELECT plant_code, COUNT(*) AS count, SUM(cost) AS total_cost
 FROM purchase_records
 GROUP BY plant_code;
 ```
 
-**Search by material code:**
-```sql
-SELECT * FROM purchase_records 
-WHERE material_code = '12345678';
-```
+Date range:
 
-**Date range query:**
 ```sql
-SELECT * FROM purchase_records 
+SELECT *
+FROM purchase_records
 WHERE purchase_date BETWEEN '2023-01-01' AND '2023-12-31';
 ```
 
 ## Troubleshooting
 
-### PostgreSQL won't start
-```bash
-# Check if already running
-sudo systemctl status postgresql
+### PostgreSQL Will Not Start
 
-# Restart PostgreSQL
+```bash
+sudo systemctl status postgresql
 sudo systemctl restart postgresql
 ```
 
-### Can't connect to database
+### Cannot Connect
+
+Check `DB_CONFIG` in `excel_to_postgres.py`, then confirm PostgreSQL is listening:
+
 ```bash
-# Check PostgreSQL is listening
 sudo netstat -tulpn | grep postgres
-
-# Check PostgreSQL logs
-sudo tail -f /var/log/postgresql/postgresql.log
 ```
 
-### Permission denied
-```bash
-# Check user permissions
-psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'newpassword';"
-```
+### Missing Excel File
 
-### Reset PostgreSQL password
-```bash
-# Edit PostgreSQL config (Linux)
-sudo nano /etc/postgresql/14/main/pg_hba.conf
-# Change 'md5' to 'trust' for local connections
-# Then restart: sudo systemctl restart postgresql
+Place `Materials_Database.xlsx` in the same folder as `excel_to_postgres.py`.
 
-# Connect and change password
-psql -U postgres
-ALTER USER postgres WITH PASSWORD 'newpassword';
-```
+### Rows Are Skipped
 
-## File Structure
+Read the warning logs. Common causes:
 
-```
-.
-├── Materials_Database.xlsx      # Excel file with raw data
-├── excel_to_postgres.py         # Migration script (main)
-├── requirements.txt             # Python dependencies
-├── README.md                    # Full documentation
-└── QUICKSTART.md               # This file
-```
+- Missing `PlantCode`
+- Missing `MaterialCode`
+- Missing `VendorCode`
+- `VendorCode` is not exactly 6 digits after trimming
+- Invalid `Date`
 
-## Next Steps
+### Existing Table Data Disappeared
 
-After successful migration:
+This is expected behavior. The script drops and recreates `purchase_records` each time it runs.
 
-1. **Verify Data**: Run queries to ensure all 50 records are present
-2. **Create Views**: Consider creating PostgreSQL views for common queries
-3. **Add Constraints**: Consider adding foreign keys if you have related tables
-4. **Set Permissions**: Configure database user permissions for your application
-5. **Backup**: Set up regular backups of your PostgreSQL database
+## Backup Before Running
 
-## Example: Create a View
-
-```sql
-CREATE VIEW material_summary AS
-SELECT 
-    material_code,
-    description,
-    COUNT(*) as purchase_count,
-    SUM(quantity) as total_quantity,
-    SUM(cost) as total_cost,
-    AVG(net_price) as avg_price
-FROM purchase_records
-GROUP BY material_code, description;
-
--- Query the view
-SELECT * FROM material_summary;
-```
-
-## Example: Add Constraints
-
-```sql
--- Add NOT NULL constraint to currency
-ALTER TABLE purchase_records 
-ALTER COLUMN currency SET NOT NULL;
-
--- Add check constraint for positive prices
-ALTER TABLE purchase_records
-ADD CONSTRAINT check_positive_price 
-CHECK (net_price > 0);
-```
-
-## Performance Tips
-
-1. **Use Indexes**: Queries use the automatically created indexes
-2. **Batch Operations**: For large updates, use batch operations
-3. **Analyze Query Plans**: Use EXPLAIN to optimize queries
-   ```sql
-   EXPLAIN SELECT * FROM purchase_records WHERE material_code = '12345678';
-   ```
-
-## Backup & Restore
+If the table may contain data you need, back it up before running the migration:
 
 ```bash
-# Backup database
-pg_dump -U postgres pharma_db > backup.sql
-
-# Restore database
-psql -U postgres pharma_db < backup.sql
-
-# Backup as compressed file
-pg_dump -U postgres -Fc pharma_db > backup.dump
-
-# Restore compressed backup
-pg_restore -U postgres -d pharma_db backup.dump
+pg_dump -U molikule_user -d molikule -t purchase_records > purchase_records_backup.sql
 ```
-
-## Got Stuck?
-
-1. Check the error message - it usually explains what went wrong
-2. Verify PostgreSQL is running: `sudo systemctl status postgresql`
-3. Verify the Excel file has all required columns
-4. Check database credentials are correct
-5. Look at PostgreSQL logs for detailed errors
-
----
-
-**Happy migrating! 🚀**

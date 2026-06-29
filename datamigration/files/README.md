@@ -1,50 +1,97 @@
 # Excel to PostgreSQL Migration Script
 
-A comprehensive Python script to migrate material data from Excel to PostgreSQL with full schema support and error handling.
+This folder contains a Python migration script that imports material purchase data from `Materials_Database.xlsx` into a PostgreSQL table named `purchase_records`.
+
+The script is currently configured for the Molikule local database through hard-coded settings in `excel_to_postgres.py`.
+
+## Files
+
+```text
+.
+├── Materials_Database.xlsx      # Excel file with raw material purchase data
+├── excel_to_postgres.py         # Migration script
+├── requirements.txt             # Python dependencies
+├── README.md                    # Full documentation
+└── QUICKSTART.md                # Short setup/run guide
+```
 
 ## Features
 
-✅ **Interactive Database Configuration** - Simple prompts for all connection details  
-✅ **Automatic Table Creation** - Creates the purchase_records table with proper schema  
-✅ **Index Creation** - Automatically creates 7 optimized indexes for query performance  
-✅ **Data Validation** - Validates required fields before insertion  
-✅ **Error Handling** - Skips invalid rows and reports errors without stopping migration  
-✅ **Progress Tracking** - Shows real-time progress during data import  
-✅ **Date Conversion** - Automatically converts dd.mm.yyyy format to PostgreSQL DATE  
-✅ **Type Safety** - Properly converts Excel data types to PostgreSQL types  
-✅ **Rollback on Failure** - Automatic rollback if migration fails  
+- Reads `Materials_Database.xlsx` with pandas/openpyxl.
+- Resolves the Excel path relative to the script file, so the script can be run from different working directories.
+- Connects to PostgreSQL using the hard-coded `DB_CONFIG` block.
+- Drops the existing target table if it already exists.
+- Recreates the `purchase_records` table.
+- Creates 4 indexes for common lookup/filter patterns.
+- Validates required columns before connecting to the database.
+- Converts `dd.mm.yyyy` Excel date values to PostgreSQL `DATE`.
+- Enforces 6-digit vendor codes.
+- Logs each migration stage in the terminal with timestamps.
+- Logs file size, Excel read duration, row progress, skipped rows, commit, rollback, and connection close.
+- Rolls back the transaction if the database migration fails.
 
 ## Prerequisites
 
-### 1. Install Required Python Libraries
+### Python Dependencies
 
-```bash
-pip install psycopg2-binary pandas openpyxl
-```
+Install the required libraries:
 
-Or using requirements.txt:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. PostgreSQL Setup
+`requirements.txt` contains:
 
-Ensure PostgreSQL is installed and running. You'll need:
-- Host (usually `localhost`)
-- Port (usually `5432`)
-- Username (usually `postgres`)
-- Password
-- An existing database (the script will create the table inside it)
+```text
+psycopg2-binary==2.9.9
+pandas==2.1.4
+openpyxl==3.1.2
+```
 
-### 3. Excel File
+### PostgreSQL Setup
 
-The script expects these columns in your Excel file:
+PostgreSQL must be installed and running. The script expects this database configuration:
+
+```python
+DB_CONFIG = {
+    "host": "localhost",
+    "port": "5432",
+    "user": "molikule_user",
+    "password": "molikule123",
+    "database": "molikule",
+    "table_name": "purchase_records"
+}
+```
+
+The database and user must already exist before running the script.
+
+Example setup:
+
+```sql
+CREATE DATABASE molikule;
+CREATE USER molikule_user WITH PASSWORD 'molikule123';
+GRANT ALL PRIVILEGES ON DATABASE molikule TO molikule_user;
+```
+
+Depending on your PostgreSQL version and permissions model, you may also need schema privileges:
+
+```sql
+\c molikule
+GRANT ALL ON SCHEMA public TO molikule_user;
+```
+
+## Excel File Requirements
+
+The script expects `Materials_Database.xlsx` to be in the same folder as `excel_to_postgres.py`.
+
+Required columns:
+
 - `PlantCode`
 - `MaterialCode`
 - `VendorCode`
 - `Description`
 - `PurchaseNo`
-- `Date` (in dd.mm.yyyy format)
+- `Date`
 - `NetPrice`
 - `Cost`
 - `SupplyingPlant`
@@ -52,80 +99,52 @@ The script expects these columns in your Excel file:
 - `Currency`
 - `Units`
 
+Date values should be in `dd.mm.yyyy` format, such as `03.05.2024`.
+
+Vendor codes are treated as 6-digit values. If a source value is longer than 6 characters, the script logs a warning and uses the first 6 characters. If the final value is not exactly 6 digits, that row is skipped.
+
 ## Usage
 
-### Basic Usage
+From this folder:
 
 ```bash
-python excel_to_postgres.py
+python3 excel_to_postgres.py
 ```
 
-The script will:
-1. Look for `Materials_Database.xlsx` in the current directory
-2. Prompt you for PostgreSQL connection details
-3. Create the table and indexes
-4. Migrate the data
-5. Display a summary
-
-### Interactive Prompts
-
-When you run the script, you'll be asked for:
-
-```
-PostgreSQL Connection Configuration
-============================================================
-
-Enter PostgreSQL host (default: localhost): 
-Enter PostgreSQL port (default: 5432): 
-Enter PostgreSQL username (default: postgres): 
-Enter PostgreSQL password: 
-Enter database name: 
-Enter table name (default: purchase_records):
-```
-
-### Example Session
+From the repository root:
 
 ```bash
-$ python excel_to_postgres.py
-
-============================================================
-  Excel to PostgreSQL Migration Tool
-============================================================
-
-Reading Excel file: Materials_Database.xlsx
-✓ Successfully read 50 rows from Excel
-
-============================================================
-PostgreSQL Connection Configuration
-============================================================
-
-Enter PostgreSQL host (default: localhost): localhost
-Enter PostgreSQL port (default: 5432): 5432
-Enter PostgreSQL username (default: postgres): postgres
-Enter PostgreSQL password: ********
-Enter database name: pharma_db
-Enter table name (default: purchase_records): purchase_records
-
-✓ Connected to PostgreSQL (localhost:5432)
-
-Creating table structure...
-✓ Created table 'purchase_records'
-✓ Created 7 indexes
-
-Migrating data...
-  Inserted 50 records...
-
-============================================================
-Migration completed successfully!
-Database: pharma_db
-Table: purchase_records
-Records inserted: 50
-============================================================
+python3 datamigration/files/excel_to_postgres.py
 ```
+
+The script does not prompt for connection details. Edit the `DB_CONFIG` block in `excel_to_postgres.py` if you need a different database, user, password, host, port, or table name.
+
+## What the Script Does
+
+1. Starts terminal logging.
+2. Locates `Materials_Database.xlsx` next to the script.
+3. Logs the Excel file size.
+4. Reads the workbook and logs read duration, row count, and columns.
+5. Validates that all required columns exist.
+6. Connects to PostgreSQL.
+7. Checks whether `purchase_records` already exists.
+8. Drops the existing table if found.
+9. Creates the table.
+10. Creates indexes.
+11. Inserts rows one by one.
+12. Logs migration progress while rows are processed.
+13. Logs skipped rows and row-level failures.
+14. Commits the transaction on success.
+15. Rolls back on database or migration failure.
+16. Closes the database connection.
+
+## Important Behavior
+
+Running the script is destructive for the target table.
+
+If `purchase_records` already exists, the script drops it with `DROP TABLE IF EXISTS ... CASCADE` and recreates it. Any existing data in that table is removed.
 
 ## Database Schema Created
-
-The script creates the following table:
 
 ```sql
 CREATE TABLE purchase_records (
@@ -145,137 +164,144 @@ CREATE TABLE purchase_records (
 );
 ```
 
-### Indexes Created
+## Indexes Created
 
-1. `idx_purchase_records_material_code` - For material lookups
-2. `idx_purchase_records_vendor_code` - For vendor lookups
-3. `idx_purchase_records_plant_code` - For plant filtering
-4. `idx_purchase_records_purchase_date` - For date range queries
-5. `idx_purchase_records_mat_ven` - Composite: material + vendor
-6. `idx_purchase_records_mat_plant` - Composite: material + plant
-7. `idx_purchase_records_ven_plant` - Composite: vendor + plant
+The script creates 4 indexes:
 
-## Configuration Details
+1. `idx_purchase_records_material_code`
+2. `idx_purchase_records_vendor_code`
+3. `idx_purchase_records_plant_code`
+4. `idx_purchase_records_purchase_date`
 
-### Default Values
-
-- **Host**: `localhost`
-- **Port**: `5432`
-- **Username**: `postgres`
-- **Table Name**: `purchase_records`
-
-Simply press Enter to accept defaults.
-
-### Connection Troubleshooting
-
-If you get a connection error:
-
-**"connection refused"**
-- Ensure PostgreSQL is running: `sudo systemctl start postgresql`
-- Check the host and port are correct
-- Verify PostgreSQL is listening on that port
-
-**"password authentication failed"**
-- Double-check the username and password
-- Ensure the user has permissions for the specified database
-
-**"database does not exist"**
-- Create the database first:
-  ```sql
-  CREATE DATABASE pharma_db;
-  ```
+These support common material, vendor, plant, and date-range queries.
 
 ## Data Type Mapping
 
-| Excel Column | PostgreSQL Type | Notes |
-|---|---|---|
-| PlantCode | VARCHAR(4) | Max 4 characters |
-| MaterialCode | VARCHAR(8) | Max 8 characters |
-| VendorCode | VARCHAR(8) | Max 8 characters |
-| Description | TEXT | No size limit |
-| PurchaseNo | VARCHAR(10) | Max 10 characters |
-| Date | DATE | Converted from dd.mm.yyyy |
-| NetPrice | NUMERIC(15,2) | 2 decimal places |
-| Cost | NUMERIC(15,2) | 2 decimal places |
-| SupplyingPlant | TEXT | No size limit |
-| Quantity | NUMERIC(15,2) | 2 decimal places |
-| Currency | VARCHAR(10) | Max 10 characters |
-| Units | VARCHAR(20) | Max 20 characters |
+| Excel Column | PostgreSQL Column | PostgreSQL Type | Notes |
+|---|---|---|---|
+| `PlantCode` | `plant_code` | `VARCHAR(4)` | Trimmed to max 4 characters |
+| `MaterialCode` | `material_code` | `VARCHAR(8)` | Trimmed to max 8 characters |
+| `VendorCode` | `vendor_code` | `VARCHAR(6)` | Must be exactly 6 digits after trimming |
+| `Description` | `description` | `TEXT` | Empty string if missing |
+| `PurchaseNo` | `purchase_no` | `VARCHAR(10)` | Trimmed to max 10 characters |
+| `Date` | `purchase_date` | `DATE` | Parsed from `dd.mm.yyyy` |
+| `NetPrice` | `net_price` | `NUMERIC(15,2)` | Converted to float before insert |
+| `Cost` | `cost` | `NUMERIC(15,2)` | Converted to float before insert |
+| `SupplyingPlant` | `supplying_plant` | `TEXT` | Empty string if missing |
+| `Quantity` | `quantity` | `NUMERIC(15,2)` | Converted to float before insert |
+| `Currency` | `currency` | `VARCHAR(10)` | Trimmed to max 10 characters |
+| `Units` | `unit` | `VARCHAR(20)` | Trimmed to max 20 characters |
 
-## Error Handling
+## Terminal Logging
 
-The script handles various error scenarios:
+The script logs messages like:
 
-- **Missing Required Fields**: Rows with missing plant_code, material_code, vendor_code, or purchase_date are skipped
-- **Invalid Data Types**: Automatic type conversion with error logging
-- **Date Parsing Errors**: Falls back to NULL if date cannot be parsed
-- **Connection Failures**: Clear error messages and graceful exit
-- **Duplicate Operations**: Prompts before dropping existing tables
+```text
+2026-06-29 12:00:00 [INFO] Starting Excel read: /path/to/Materials_Database.xlsx
+2026-06-29 12:00:01 [INFO] Excel read complete in 0.42 seconds. Rows: 50, Columns: 12
+2026-06-29 12:00:01 [INFO] Connecting to PostgreSQL host=localhost port=5432 database=molikule user=molikule_user
+2026-06-29 12:00:01 [WARNING] Existing table 'purchase_records' found. Dropping it before migration
+2026-06-29 12:00:02 [INFO] Migration progress: 50/50 rows processed, 50 inserted, 0 skipped, 0.18 seconds elapsed
+2026-06-29 12:00:02 [INFO] Migration completed successfully
+```
+
+For large files, the most useful stages to watch are:
+
+- `Reading workbook now`
+- `Excel read complete`
+- `Starting data migration`
+- `Migration progress`
+- `Committing transaction`
 
 ## Verification
 
-After migration, verify the data in PostgreSQL:
+Connect to the configured database:
 
-```sql
--- Connect to your database
-psql -U postgres -d pharma_db
-
--- Check record count
-SELECT COUNT(*) FROM purchase_records;
-
--- View sample records
-SELECT * FROM purchase_records LIMIT 5;
-
--- Check indexes
-SELECT indexname FROM pg_indexes WHERE tablename = 'purchase_records';
-
--- Query by material code
-SELECT * FROM purchase_records WHERE material_code = '12345678';
-
--- Get purchase summary
-SELECT currency, COUNT(*) as total_purchases, 
-       SUM(cost) as total_cost 
-FROM purchase_records 
-GROUP BY currency;
+```bash
+psql -U molikule_user -d molikule
 ```
 
-## Performance Notes
+Check the table:
 
-The 7 indexes are optimized for:
-- Fast lookups by material, vendor, or plant code
-- Efficient date range queries
-- Composite queries combining multiple columns
-- Performance with up to 300,000+ records
+```sql
+\dt
+\d purchase_records
+```
+
+Check record count:
+
+```sql
+SELECT COUNT(*) FROM purchase_records;
+```
+
+View sample records:
+
+```sql
+SELECT * FROM purchase_records LIMIT 5;
+```
+
+Check indexes:
+
+```sql
+SELECT indexname
+FROM pg_indexes
+WHERE tablename = 'purchase_records';
+```
+
+Example queries:
+
+```sql
+SELECT * FROM purchase_records WHERE material_code = '12345678';
+
+SELECT currency, COUNT(*) AS total_purchases, SUM(cost) AS total_cost
+FROM purchase_records
+GROUP BY currency;
+
+SELECT *
+FROM purchase_records
+WHERE purchase_date BETWEEN '2023-01-01' AND '2023-12-31';
+```
 
 ## Troubleshooting
 
-### Script won't start
-```bash
-# Check Python version (requires 3.6+)
-python --version
+### Excel File Not Found
 
-# Verify dependencies
-pip list | grep -E "psycopg2|pandas"
+Make sure `Materials_Database.xlsx` is in the same folder as `excel_to_postgres.py`.
+
+### Missing Required Columns
+
+The script exits before connecting to PostgreSQL if any required column is missing. Check the logged missing column names and update the workbook.
+
+### Connection Refused
+
+- Confirm PostgreSQL is running.
+- Confirm host and port in `DB_CONFIG`.
+- Confirm PostgreSQL is listening on port `5432`.
+
+### Authentication Failed
+
+- Confirm `molikule_user` exists.
+- Confirm the password is correct.
+- Confirm the user has access to the `molikule` database.
+
+### Permission Denied Creating Table
+
+Grant database/schema privileges to the configured user:
+
+```sql
+GRANT ALL PRIVILEGES ON DATABASE molikule TO molikule_user;
+\c molikule
+GRANT ALL ON SCHEMA public TO molikule_user;
 ```
 
-### Slow migration
-- Check if PostgreSQL server is local or remote
-- Verify network connectivity for remote databases
-- Ensure adequate system resources
+### Rows Skipped
 
-### Missing data after migration
-- Check error messages in script output
-- Verify Excel file format matches requirements
-- Check PostgreSQL logs: `/var/log/postgresql/`
+Rows can be skipped when:
 
-## Contact & Support
+- `PlantCode` is missing.
+- `MaterialCode` is missing.
+- `VendorCode` is missing.
+- `VendorCode` is not exactly 6 digits after trimming.
+- `Date` cannot be parsed.
 
-For issues or questions:
-1. Check the error messages in script output
-2. Verify PostgreSQL is running and accessible
-3. Ensure Excel file has all required columns
-4. Check database permissions
-
-## License
-
-Free to use for any purpose.
+Check the terminal warnings for the exact row numbers.

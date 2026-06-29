@@ -120,8 +120,8 @@ function VendorSection({ vs }: { vs: VendorSummary }) {
   return (
     <>
       <SectionHeading title={`Vendor Summary — ${vs.vendor_code}`} />
-      <MetricRow label="Avg Purchase Cost" value={formatCost(vs.avg_cost)} />
-      <MetricRow label="Avg Net Price" value={formatCost(vs.avg_net_price)} />
+      <MetricRow label="Average Order Cost" value={formatCost(vs.avg_cost)} />
+      <MetricRow label="Average Net Unit Price" value={formatCost(vs.avg_net_price)} />
       <MetricRow label="Last Purchase Cost" value={formatCost(vs.last_purchase_cost)} />
       <MetricRow label="Cheapest Purchase Cost" value={formatCost(vs.cheapest_cost)} />
       <MetricRow label="Materials Supplied" value={formatNumber(vs.materials_count)} />
@@ -159,8 +159,8 @@ function PlantSection({ ps }: { ps: PlantSummary }) {
   return (
     <>
       <SectionHeading title={`Plant Summary — ${ps.plant_code}`} />
-      <MetricRow label="Avg Purchase Cost" value={formatCost(ps.avg_cost)} />
-      <MetricRow label="Avg Net Price" value={formatCost(ps.avg_net_price)} />
+      <MetricRow label="Average Order Cost" value={formatCost(ps.avg_cost)} />
+      <MetricRow label="Average Net Unit Price" value={formatCost(ps.avg_net_price)} />
       <MetricRow label="Last Purchase Cost" value={formatCost(ps.last_purchase_cost)} />
       <MetricRow label="Cheapest Purchase Cost" value={formatCost(ps.cheapest_cost)} />
       <MetricRow label="Vendor Count" value={formatNumber(ps.vendor_count)} />
